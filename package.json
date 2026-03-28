@@ -6,6 +6,7 @@
   "main": "app.js",
   "scripts": {
     "build:netlify": "node scripts/verify-netlify-assets.mjs && esbuild netlify/app.js --bundle --outfile=netlify/bundle.js --format=esm --platform=browser",
+    "watch:netlify": "esbuild netlify/app.js --bundle --outfile=netlify/bundle.js --format=esm --platform=browser --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

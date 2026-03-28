@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Netlify 배포 시 사이트 루트가 netlify 폴더이면 자동(bundle.js 위치)으로 충분. 로컬에서 이 파일만 볼 때 루트와 맞추려면 content="auto" -->
+  <meta name="lobby-asset-base" content="auto">
   <title>NURION 3D 로비</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -199,25 +201,7 @@
     <button id="skip-intro" type="button">건너뛰기</button>
   </div>
 
-  <script>
-    // PC·모바일 동일 진입 영상(assets/intro.mp4) — 분기는 인트로 이후 bundle.js
-    (function(){
-      try {
-        var v = document.getElementById('intro-video');
-        if (!v) return;
-        v.src = 'assets/intro.mp4';
-        v.preload = 'auto';
-        v.muted = true;
-        v.playsInline = true;
-        v.setAttribute('playsinline','');
-        v.setAttribute('muted','');
-        try {
-          v.load();
-          v.play().catch(function(e){ console.warn('intro video initial play attempt failed:', e); });
-        } catch (e) { console.warn('intro play setup error', e); }
-      } catch (e) { console.warn('intro selection error', e); }
-    })();
-  </script>
+  <!-- 인트로: src/load/play 는 netlify/app.js 의 initIntro() 만 담당 (인라인에서 중복 호출 시 load 가 play 를 끊어 AbortError) -->
   <div id="canvas-container"></div>
 
   <div id="mobile-lobby-25d" class="mobile-lobby-25d hidden" aria-hidden="true">
@@ -286,6 +270,6 @@
       window.__clearAutoHome = function() { /* no-op for compatibility */ };
     }
   </script>
-  <script type="module" src="bundle.js"></script>
+  <script type="module" src="bundle.js?v=20250328j"></script>
 </body>
 </html>

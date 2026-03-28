@@ -23652,14 +23652,14 @@ var GLTFParser = class {
       return this.sourceCache[sourceIndex].then((texture) => texture.clone());
     }
     const sourceDef = json.images[sourceIndex];
-    const URL = self.URL || self.webkitURL;
+    const URL2 = self.URL || self.webkitURL;
     let sourceURI = sourceDef.uri || "";
     let isObjectURL = false;
     if (sourceDef.bufferView !== void 0) {
       sourceURI = parser.getDependency("bufferView", sourceDef.bufferView).then(function(bufferView) {
         isObjectURL = true;
         const blob = new Blob([bufferView], { type: sourceDef.mimeType });
-        sourceURI = URL.createObjectURL(blob);
+        sourceURI = URL2.createObjectURL(blob);
         return sourceURI;
       });
     } else if (sourceDef.uri === void 0) {
@@ -23679,7 +23679,7 @@ var GLTFParser = class {
       });
     }).then(function(texture) {
       if (isObjectURL === true) {
-        URL.revokeObjectURL(sourceURI);
+        URL2.revokeObjectURL(sourceURI);
       }
       texture.userData.mimeType = sourceDef.mimeType || getImageURIMimeType(sourceDef.uri);
       return texture;
@@ -24438,34 +24438,428 @@ function addPrimitiveAttributes(geometry, primitiveDef, parser) {
   });
 }
 
+// node_modules/three/examples/jsm/loaders/DRACOLoader.js
+var _taskCache = /* @__PURE__ */ new WeakMap();
+var DRACOLoader = class extends Loader {
+  constructor(manager) {
+    super(manager);
+    this.decoderPath = "";
+    this.decoderConfig = {};
+    this.decoderBinary = null;
+    this.decoderPending = null;
+    this.workerLimit = 4;
+    this.workerPool = [];
+    this.workerNextTaskID = 1;
+    this.workerSourceURL = "";
+    this.defaultAttributeIDs = {
+      position: "POSITION",
+      normal: "NORMAL",
+      color: "COLOR",
+      uv: "TEX_COORD"
+    };
+    this.defaultAttributeTypes = {
+      position: "Float32Array",
+      normal: "Float32Array",
+      color: "Float32Array",
+      uv: "Float32Array"
+    };
+  }
+  setDecoderPath(path) {
+    this.decoderPath = path;
+    return this;
+  }
+  setDecoderConfig(config) {
+    this.decoderConfig = config;
+    return this;
+  }
+  setWorkerLimit(workerLimit) {
+    this.workerLimit = workerLimit;
+    return this;
+  }
+  load(url, onLoad, onProgress, onError) {
+    const loader = new FileLoader(this.manager);
+    loader.setPath(this.path);
+    loader.setResponseType("arraybuffer");
+    loader.setRequestHeader(this.requestHeader);
+    loader.setWithCredentials(this.withCredentials);
+    loader.load(url, (buffer) => {
+      this.parse(buffer, onLoad, onError);
+    }, onProgress, onError);
+  }
+  parse(buffer, onLoad, onError = () => {
+  }) {
+    this.decodeDracoFile(buffer, onLoad, null, null, SRGBColorSpace).catch(onError);
+  }
+  decodeDracoFile(buffer, callback, attributeIDs, attributeTypes, vertexColorSpace = LinearSRGBColorSpace, onError = () => {
+  }) {
+    const taskConfig = {
+      attributeIDs: attributeIDs || this.defaultAttributeIDs,
+      attributeTypes: attributeTypes || this.defaultAttributeTypes,
+      useUniqueIDs: !!attributeIDs,
+      vertexColorSpace
+    };
+    return this.decodeGeometry(buffer, taskConfig).then(callback).catch(onError);
+  }
+  decodeGeometry(buffer, taskConfig) {
+    const taskKey = JSON.stringify(taskConfig);
+    if (_taskCache.has(buffer)) {
+      const cachedTask = _taskCache.get(buffer);
+      if (cachedTask.key === taskKey) {
+        return cachedTask.promise;
+      } else if (buffer.byteLength === 0) {
+        throw new Error(
+          "THREE.DRACOLoader: Unable to re-decode a buffer with different settings. Buffer has already been transferred."
+        );
+      }
+    }
+    let worker;
+    const taskID = this.workerNextTaskID++;
+    const taskCost = buffer.byteLength;
+    const geometryPending = this._getWorker(taskID, taskCost).then((_worker) => {
+      worker = _worker;
+      return new Promise((resolve, reject) => {
+        worker._callbacks[taskID] = { resolve, reject };
+        worker.postMessage({ type: "decode", id: taskID, taskConfig, buffer }, [buffer]);
+      });
+    }).then((message) => this._createGeometry(message.geometry));
+    geometryPending.catch(() => true).then(() => {
+      if (worker && taskID) {
+        this._releaseTask(worker, taskID);
+      }
+    });
+    _taskCache.set(buffer, {
+      key: taskKey,
+      promise: geometryPending
+    });
+    return geometryPending;
+  }
+  _createGeometry(geometryData) {
+    const geometry = new BufferGeometry();
+    if (geometryData.index) {
+      geometry.setIndex(new BufferAttribute(geometryData.index.array, 1));
+    }
+    for (let i = 0; i < geometryData.attributes.length; i++) {
+      const result = geometryData.attributes[i];
+      const name = result.name;
+      const array = result.array;
+      const itemSize = result.itemSize;
+      const attribute = new BufferAttribute(array, itemSize);
+      if (name === "color") {
+        this._assignVertexColorSpace(attribute, result.vertexColorSpace);
+        attribute.normalized = array instanceof Float32Array === false;
+      }
+      geometry.setAttribute(name, attribute);
+    }
+    return geometry;
+  }
+  _assignVertexColorSpace(attribute, inputColorSpace) {
+    if (inputColorSpace !== SRGBColorSpace) return;
+    const _color2 = new Color();
+    for (let i = 0, il = attribute.count; i < il; i++) {
+      _color2.fromBufferAttribute(attribute, i).convertSRGBToLinear();
+      attribute.setXYZ(i, _color2.r, _color2.g, _color2.b);
+    }
+  }
+  _loadLibrary(url, responseType) {
+    const loader = new FileLoader(this.manager);
+    loader.setPath(this.decoderPath);
+    loader.setResponseType(responseType);
+    loader.setWithCredentials(this.withCredentials);
+    return new Promise((resolve, reject) => {
+      loader.load(url, resolve, void 0, reject);
+    });
+  }
+  preload() {
+    this._initDecoder();
+    return this;
+  }
+  _initDecoder() {
+    if (this.decoderPending) return this.decoderPending;
+    const useJS = typeof WebAssembly !== "object" || this.decoderConfig.type === "js";
+    const librariesPending = [];
+    if (useJS) {
+      librariesPending.push(this._loadLibrary("draco_decoder.js", "text"));
+    } else {
+      librariesPending.push(this._loadLibrary("draco_wasm_wrapper.js", "text"));
+      librariesPending.push(this._loadLibrary("draco_decoder.wasm", "arraybuffer"));
+    }
+    this.decoderPending = Promise.all(librariesPending).then((libraries) => {
+      const jsContent = libraries[0];
+      if (!useJS) {
+        this.decoderConfig.wasmBinary = libraries[1];
+      }
+      const fn = DRACOWorker.toString();
+      const body = [
+        "/* draco decoder */",
+        jsContent,
+        "",
+        "/* worker */",
+        fn.substring(fn.indexOf("{") + 1, fn.lastIndexOf("}"))
+      ].join("\n");
+      this.workerSourceURL = URL.createObjectURL(new Blob([body]));
+    });
+    return this.decoderPending;
+  }
+  _getWorker(taskID, taskCost) {
+    return this._initDecoder().then(() => {
+      if (this.workerPool.length < this.workerLimit) {
+        const worker2 = new Worker(this.workerSourceURL);
+        worker2._callbacks = {};
+        worker2._taskCosts = {};
+        worker2._taskLoad = 0;
+        worker2.postMessage({ type: "init", decoderConfig: this.decoderConfig });
+        worker2.onmessage = function(e) {
+          const message = e.data;
+          switch (message.type) {
+            case "decode":
+              worker2._callbacks[message.id].resolve(message);
+              break;
+            case "error":
+              worker2._callbacks[message.id].reject(message);
+              break;
+            default:
+              console.error('THREE.DRACOLoader: Unexpected message, "' + message.type + '"');
+          }
+        };
+        this.workerPool.push(worker2);
+      } else {
+        this.workerPool.sort(function(a, b) {
+          return a._taskLoad > b._taskLoad ? -1 : 1;
+        });
+      }
+      const worker = this.workerPool[this.workerPool.length - 1];
+      worker._taskCosts[taskID] = taskCost;
+      worker._taskLoad += taskCost;
+      return worker;
+    });
+  }
+  _releaseTask(worker, taskID) {
+    worker._taskLoad -= worker._taskCosts[taskID];
+    delete worker._callbacks[taskID];
+    delete worker._taskCosts[taskID];
+  }
+  debug() {
+    console.log("Task load: ", this.workerPool.map((worker) => worker._taskLoad));
+  }
+  dispose() {
+    for (let i = 0; i < this.workerPool.length; ++i) {
+      this.workerPool[i].terminate();
+    }
+    this.workerPool.length = 0;
+    if (this.workerSourceURL !== "") {
+      URL.revokeObjectURL(this.workerSourceURL);
+    }
+    return this;
+  }
+};
+function DRACOWorker() {
+  let decoderConfig;
+  let decoderPending;
+  onmessage = function(e) {
+    const message = e.data;
+    switch (message.type) {
+      case "init":
+        decoderConfig = message.decoderConfig;
+        decoderPending = new Promise(function(resolve) {
+          decoderConfig.onModuleLoaded = function(draco) {
+            resolve({ draco });
+          };
+          DracoDecoderModule(decoderConfig);
+        });
+        break;
+      case "decode":
+        const buffer = message.buffer;
+        const taskConfig = message.taskConfig;
+        decoderPending.then((module) => {
+          const draco = module.draco;
+          const decoder = new draco.Decoder();
+          try {
+            const geometry = decodeGeometry(draco, decoder, new Int8Array(buffer), taskConfig);
+            const buffers = geometry.attributes.map((attr) => attr.array.buffer);
+            if (geometry.index) buffers.push(geometry.index.array.buffer);
+            self.postMessage({ type: "decode", id: message.id, geometry }, buffers);
+          } catch (error) {
+            console.error(error);
+            self.postMessage({ type: "error", id: message.id, error: error.message });
+          } finally {
+            draco.destroy(decoder);
+          }
+        });
+        break;
+    }
+  };
+  function decodeGeometry(draco, decoder, array, taskConfig) {
+    const attributeIDs = taskConfig.attributeIDs;
+    const attributeTypes = taskConfig.attributeTypes;
+    let dracoGeometry;
+    let decodingStatus;
+    const geometryType = decoder.GetEncodedGeometryType(array);
+    if (geometryType === draco.TRIANGULAR_MESH) {
+      dracoGeometry = new draco.Mesh();
+      decodingStatus = decoder.DecodeArrayToMesh(array, array.byteLength, dracoGeometry);
+    } else if (geometryType === draco.POINT_CLOUD) {
+      dracoGeometry = new draco.PointCloud();
+      decodingStatus = decoder.DecodeArrayToPointCloud(array, array.byteLength, dracoGeometry);
+    } else {
+      throw new Error("THREE.DRACOLoader: Unexpected geometry type.");
+    }
+    if (!decodingStatus.ok() || dracoGeometry.ptr === 0) {
+      throw new Error("THREE.DRACOLoader: Decoding failed: " + decodingStatus.error_msg());
+    }
+    const geometry = { index: null, attributes: [] };
+    for (const attributeName in attributeIDs) {
+      const attributeType = self[attributeTypes[attributeName]];
+      let attribute;
+      let attributeID;
+      if (taskConfig.useUniqueIDs) {
+        attributeID = attributeIDs[attributeName];
+        attribute = decoder.GetAttributeByUniqueId(dracoGeometry, attributeID);
+      } else {
+        attributeID = decoder.GetAttributeId(dracoGeometry, draco[attributeIDs[attributeName]]);
+        if (attributeID === -1) continue;
+        attribute = decoder.GetAttribute(dracoGeometry, attributeID);
+      }
+      const attributeResult = decodeAttribute(draco, decoder, dracoGeometry, attributeName, attributeType, attribute);
+      if (attributeName === "color") {
+        attributeResult.vertexColorSpace = taskConfig.vertexColorSpace;
+      }
+      geometry.attributes.push(attributeResult);
+    }
+    if (geometryType === draco.TRIANGULAR_MESH) {
+      geometry.index = decodeIndex(draco, decoder, dracoGeometry);
+    }
+    draco.destroy(dracoGeometry);
+    return geometry;
+  }
+  function decodeIndex(draco, decoder, dracoGeometry) {
+    const numFaces = dracoGeometry.num_faces();
+    const numIndices = numFaces * 3;
+    const byteLength = numIndices * 4;
+    const ptr = draco._malloc(byteLength);
+    decoder.GetTrianglesUInt32Array(dracoGeometry, byteLength, ptr);
+    const index = new Uint32Array(draco.HEAPF32.buffer, ptr, numIndices).slice();
+    draco._free(ptr);
+    return { array: index, itemSize: 1 };
+  }
+  function decodeAttribute(draco, decoder, dracoGeometry, attributeName, attributeType, attribute) {
+    const numComponents = attribute.num_components();
+    const numPoints = dracoGeometry.num_points();
+    const numValues = numPoints * numComponents;
+    const byteLength = numValues * attributeType.BYTES_PER_ELEMENT;
+    const dataType = getDracoDataType(draco, attributeType);
+    const ptr = draco._malloc(byteLength);
+    decoder.GetAttributeDataArrayForAllPoints(dracoGeometry, attribute, dataType, byteLength, ptr);
+    const array = new attributeType(draco.HEAPF32.buffer, ptr, numValues).slice();
+    draco._free(ptr);
+    return {
+      name: attributeName,
+      array,
+      itemSize: numComponents
+    };
+  }
+  function getDracoDataType(draco, attributeType) {
+    switch (attributeType) {
+      case Float32Array:
+        return draco.DT_FLOAT32;
+      case Int8Array:
+        return draco.DT_INT8;
+      case Int16Array:
+        return draco.DT_INT16;
+      case Int32Array:
+        return draco.DT_INT32;
+      case Uint8Array:
+        return draco.DT_UINT8;
+      case Uint16Array:
+        return draco.DT_UINT16;
+      case Uint32Array:
+        return draco.DT_UINT32;
+    }
+  }
+}
+
 // netlify/app.js
+var LOBBY_BUILD_STAMP = "20250328j";
+try {
+  window.__LOBBY_BUILD_STAMP = LOBBY_BUILD_STAMP;
+} catch (_) {
+}
+console.info("[LOBBY] bundle stamp:", LOBBY_BUILD_STAMP);
 var HIDE_PEOPLE_PATTERN = /armature|human|person|character|body|man|woman|people|head|hair|arm|leg|hand|foot|torso|face|skin|rig|bone|limb|cap|shirt|pants|shoe|avatar|figure|shadow|silhouette|panel|slab|outline|black/;
 var HIDE_TEXT_PATTERN = /^text\.|text$/i;
 var HIDE_FLOOR_LINE_MAT_PATTERN = /road_line|line_neon/;
 var DEBUG_LOG_GLB_NAMES = false;
 var HIDE_OBJECT_NAMES_EXACT = [];
-var INTRO_SHARED = "assets/intro.mp4";
-var VIDEO_AD_PATH = "assets/intro.mp4";
-var LOBBY_25D_VIDEO = "assets/lobby_2d5.mp4";
-var LOBBY_MODEL_PATH = "assets/nurion_lobby.glb";
-var LOBBY_PROCESSING = "minimal";
-function isMobileDevice() {
-  return /Mobi|Android|iPhone|iPad|Windows Phone/i.test(navigator.userAgent || "");
+var FLOOR_OBSTACLE_NAME_PATTERN = /^(?:Cube|Circle)(?:\.\d+)?$/i;
+var FLOOR_OBSTACLE_MAX_CENTER_Y = 2.25;
+var FLOOR_OBSTACLE_MAX_TOP_Y = 3.35;
+var FLOOR_OBSTACLE_MAX_DIM = 22;
+var FLOOR_OBSTACLE_MAX_BOTTOM_Y = 12;
+function getBundleScriptBaseUrl() {
+  const meta = document.querySelector('meta[name="lobby-asset-base"]');
+  if (meta && meta.content != null) {
+    const c = String(meta.content).trim();
+    if (c && c.toLowerCase() !== "auto") {
+      try {
+        const pageDir = new URL(".", location.href).href;
+        return new URL(c, pageDir).href;
+      } catch (e) {
+        console.warn("[LOBBY] meta lobby-asset-base \uBB34\uC2DC:", meta.content, e);
+      }
+    }
+  }
+  const list = document.querySelectorAll('script[type="module"][src*="bundle.js"]');
+  const el = list.length ? list[list.length - 1] : null;
+  if (el && el.src) {
+    return new URL(".", el.src).href;
+  }
+  return new URL("./", document.baseURI).href;
 }
-var PLANET_TEXTURES = [
-  "assets/textures/planets/jupiter.png",
-  "assets/textures/planets/mars.png",
-  "assets/textures/planets/moon.png",
-  "assets/textures/planets/saturn_ring.png",
-  "assets/textures/planets/venus.png"
-];
+function assetUrl(relativePath) {
+  return new URL(relativePath, getBundleScriptBaseUrl()).href;
+}
+var INTRO_SHARED = assetUrl("assets/intro.mp4");
+var VIDEO_AD_PATH = assetUrl("assets/intro.mp4");
+var LOBBY_25D_VIDEO = assetUrl("assets/lobby_2d5.mp4");
+var LOBBY_GLB_CACHE_BUST = "3";
+var LOBBY_MODEL_PATH = (() => {
+  const u = new URL(assetUrl("assets/nurion_lobby.glb"));
+  u.searchParams.set("v", LOBBY_GLB_CACHE_BUST);
+  return u.href;
+})();
+var LOBBY_PROCESSING = "full";
+function useMobileLobbyPath() {
+  try {
+    const q = location.search || "";
+    if (/[?&](?:desktop|force3d)=1(?:&|$)/i.test(q)) return false;
+    if (/[?&]mobileLobby=1(?:&|$)/i.test(q)) return true;
+  } catch (_) {
+  }
+  return false;
+}
 var DESK_LABELS = [
-  { name: "Plane035", label: "\uAE30\uC5C5\uCEE8\uC124\uD305", planetIndex: 0, cameraPos: { x: -6, y: 3.5, z: 6 }, cameraTarget: { x: -2, y: 2, z: 3 } },
-  { name: "Plane040", label: "\uC778\uD130\uB137\uC2E0\uBB38\uC0AC", planetIndex: 1, cameraPos: { x: 4, y: 3.5, z: 6 }, cameraTarget: { x: 2, y: 2, z: 3 } },
-  { name: "Plane047", label: "\uCC3D\uACE0\uD615 \uC804\uC790\uBB38\uC11C", planetIndex: 2, cameraPos: { x: 8, y: 3.5, z: 2 }, cameraTarget: { x: 6, y: 2, z: 1 } },
-  { name: "Plane054", label: "\uC751\uC6A9 \uC18C\uD504\uD2B8\uC6E8\uC5B4 \uAC1C\uBC1C", planetIndex: 3, cameraPos: { x: 2, y: 3.5, z: -6 }, cameraTarget: { x: 1, y: 2, z: -3 } },
-  { name: "Plane061", label: "\uC2A4\uB9C8\uD2B8 City", planetIndex: 4, cameraPos: { x: -4, y: 3.5, z: -6 }, cameraTarget: { x: -2, y: 2, z: -3 } }
+  // 1. Plane035
+  { name: "Plane035", label: "\uAE30\uC5C5\uCEE8\uC124\uD305", planetTexture: assetUrl("assets/textures/planets/jupiter.png"), cameraPos: { x: -6, y: 3.5, z: 6 }, cameraTarget: { x: -2, y: 2, z: 3 } },
+  // 2. Plane040
+  { name: "Plane040", label: "\uC778\uD130\uB137\uC2E0\uBB38\uC0AC", planetTexture: assetUrl("assets/textures/planets/mars.png"), cameraPos: { x: 4, y: 3.5, z: 6 }, cameraTarget: { x: 2, y: 2, z: 3 } },
+  // 3. Plane047
+  { name: "Plane047", label: "\uCC3D\uACE0\uD615 \uC804\uC790\uBB38\uC11C", planetTexture: assetUrl("assets/textures/planets/moon.png"), cameraPos: { x: 8, y: 3.5, z: 2 }, cameraTarget: { x: 6, y: 2, z: 1 } },
+  // 4. Plane054
+  { name: "Plane054", label: "\uC751\uC6A9 \uC18C\uD504\uD2B8\uC6E8\uC5B4 \uAC1C\uBC1C", planetTexture: assetUrl("assets/textures/planets/saturn_ring.png"), cameraPos: { x: 2, y: 3.5, z: -6 }, cameraTarget: { x: 1, y: 2, z: -3 } },
+  // 5. Plane061
+  { name: "Plane061", label: "\uC2A4\uB9C8\uD2B8 City", planetTexture: assetUrl("assets/textures/planets/venus.png"), cameraPos: { x: -4, y: 3.5, z: -6 }, cameraTarget: { x: -2, y: 2, z: -3 } }
 ];
+console.info(
+  "[LOBBY] \uC5D0\uC14B \uAE30\uC900:",
+  getBundleScriptBaseUrl(),
+  "| GLB:",
+  LOBBY_MODEL_PATH,
+  "| GLB \uCE90\uC2DC\uBC84\uC2A4\uD2B8:",
+  LOBBY_GLB_CACHE_BUST,
+  "(\uBC14\uAFC0 \uB54C\uB9C8\uB2E4 +1)",
+  "| \uD6C4\uCC98\uB9AC:",
+  LOBBY_PROCESSING,
+  "(full=\uBAA8\uB2C8\uD130 \uD589\uC131\xB7\uBC14\uB2E5 \uCC98\uB9AC)"
+);
 var DESK_TO_DEPTKEY = {
   "\uAE30\uC5C5\uCEE8\uC124\uD305": "consulting",
   "\uC778\uD130\uB137\uC2E0\uBB38\uC0AC": "news",
@@ -24474,11 +24868,11 @@ var DESK_TO_DEPTKEY = {
   "\uC2A4\uB9C8\uD2B8 City": "smartcity"
 };
 var DESK_LINKS = {
-  plane035: "dept/consulting.html",
-  plane040: "dept/news.html",
-  plane047: "dept/edocs.html",
-  plane054: "dept/software.html",
-  plane061: "dept/smartcity.html"
+  plane035: assetUrl("dept/consulting.html"),
+  plane040: assetUrl("dept/news.html"),
+  plane047: assetUrl("dept/edocs.html"),
+  plane054: assetUrl("dept/software.html"),
+  plane061: assetUrl("dept/smartcity.html")
 };
 var DEPT_CONTENT = {
   consulting: {
@@ -24595,7 +24989,7 @@ function openDept(deptKey, { updateHash = true } = {}) {
   if (!page) return;
   try {
     const v = document.getElementById("lobby-25d-video");
-    if (v && isMobileDevice()) v.pause();
+    if (v && useMobileLobbyPath()) v.pause();
   } catch (e) {
   }
   deptRoot?.classList.add("open");
@@ -24617,7 +25011,7 @@ function closeDept({ updateHash = true } = {}) {
   deptRoot?.setAttribute("aria-hidden", "true");
   try {
     const v = document.getElementById("lobby-25d-video");
-    if (v && isMobileDevice()) v.play().catch(() => {
+    if (v && useMobileLobbyPath()) v.play().catch(() => {
     });
   } catch (e) {
   }
@@ -24697,7 +25091,7 @@ var targetPosition = new Vector3();
 var targetLookAt = new Vector3();
 var MOVE_SPEED = 0.05;
 function enterMainAfterIntro() {
-  if (!isMobileDevice()) return;
+  if (!useMobileLobbyPath()) return;
   const canvas = document.getElementById("canvas-container");
   if (canvas) canvas.style.display = "none";
   const root = document.getElementById("mobile-lobby-25d");
@@ -24780,6 +25174,18 @@ function initIntro() {
       video.load();
     } catch (e) {
     }
+    const tryPlay = () => {
+      if (done || !video) return;
+      const pp = video.play();
+      if (pp && pp.catch) {
+        pp.catch((e) => {
+          if (e && (e.name === "AbortError" || e.name === "NotAllowedError")) return;
+          console.warn("intro play failed:", e);
+          showLobby();
+        });
+      }
+    };
+    video.addEventListener("canplay", tryPlay, { once: true });
   }
   watchdog = setInterval(() => {
     if (!done && video && video.readyState >= 2) {
@@ -24798,23 +25204,12 @@ function initIntro() {
     window.addEventListener("resize", applyIntroSrc);
   } catch (e) {
   }
-  const p = video?.play && video.play();
-  if (p && p.catch) {
-    p.catch((e) => {
-      console.warn("intro play failed:", e);
-      showLobby();
-    });
-  }
   try {
     video && video.addEventListener("error", showLobby);
   } catch (e) {
   }
   try {
     video && video.addEventListener("stalled", () => setTimeout(() => !done && showLobby(), 1200));
-  } catch (e) {
-  }
-  try {
-    video && video.addEventListener("abort", showLobby);
   } catch (e) {
   }
   try {
@@ -24885,9 +25280,124 @@ function addCameraFacingLabelSleeveOnCylinder(cylMesh, text) {
   deskCylLabels.push({ cylinder: cylMesh, texture });
   console.log(`\u2713 \uC6D0\uD1B5 \uB77C\uBCA8 \uC2AC\uB9AC\uBE0C \uBD80\uCC29: ${text} \u2192 ${cylMesh.name}`);
 }
+function findNearestMeshToPoint(meshes, worldPoint) {
+  let best = null;
+  let bestD = Infinity;
+  const p = new Vector3();
+  for (const m of meshes) {
+    m.getWorldPosition(p);
+    const d = p.distanceTo(worldPoint);
+    if (d < bestD) {
+      bestD = d;
+      best = m;
+    }
+  }
+  return { best, bestD };
+}
+var _colBox = new Box3();
+var _colSize = new Vector3();
+function collectCylinderLabelAnchorCandidates(model) {
+  const out = [];
+  model.traverse((obj) => {
+    if (!obj.isMesh || !obj.geometry) return;
+    if (obj.userData?.isDesk) return;
+    const n = (obj.name || "").toLowerCase();
+    if (n.startsWith("desk_") || n.startsWith("__desk_")) return;
+    const type = (obj.geometry.type || "").toLowerCase();
+    const nameHit = type.includes("cylinder") || type.includes("cone") || type.includes("lathe") || n.includes("cylinder") || n.includes("cone") || n.includes("tube") || n.includes("round") || n.includes("column") || n.includes("pillar") || n.includes("pole") || n.includes("stand") || n.includes("tower");
+    if (nameHit) {
+      out.push(obj);
+      return;
+    }
+    if (type.includes("plane")) return;
+    try {
+      obj.updateMatrixWorld(true);
+      _colBox.setFromObject(obj);
+      _colBox.getSize(_colSize);
+      const h = _colSize.y;
+      const horiz = Math.max(_colSize.x, _colSize.z);
+      if (h >= 0.35 && horiz >= 0.06 && h >= horiz * 1.75) out.push(obj);
+    } catch (_) {
+    }
+  });
+  return out;
+}
+function addSyntheticCylinderLabelAnchor(deskMesh, text) {
+  if (!deskMesh || !scene) return;
+  deskMesh.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(deskMesh);
+  const center = new Vector3();
+  const size = new Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+  const anchor = new Mesh(
+    new CylinderGeometry(0.45, 0.45, Math.min(1.5, Math.max(size.y, 0.2) + 0.5), 32),
+    new MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true
+    })
+  );
+  anchor.name = `__desk_label_anchor__${text}`;
+  anchor.position.copy(center);
+  anchor.position.y += size.y * 0.5 + 0.9;
+  anchor.renderOrder = 5;
+  scene.add(anchor);
+  addCameraFacingLabelSleeveOnCylinder(anchor, text);
+  console.log(`\u2713 \uB77C\uBCA8 \uC575\uCEE4(\uD569\uC131 \uAE30\uB465): ${text}`);
+}
 function normalizePlaneName(name) {
   if (!name) return "";
   return name.toLowerCase().replace(/\./g, "").replace(/_\d+$/, "");
+}
+var _floorObsBox = new Box3();
+var _floorObsSize = new Vector3();
+var _floorObsCenter = new Vector3();
+function removeFloorObstacleMeshes(model) {
+  const deskKeys = new Set(DESK_LABELS.map((d) => normalizePlaneName(d.name)));
+  const removed = [];
+  model.updateMatrixWorld(true);
+  const toRemove = [];
+  model.traverse((o) => {
+    if (!o.isMesh || o.userData?.isDesk) return;
+    const name = (o.name || "").trim();
+    if (!name || !FLOOR_OBSTACLE_NAME_PATTERN.test(name)) return;
+    const low = name.toLowerCase();
+    if (low.includes("floor")) return;
+    if (deskKeys.has(normalizePlaneName(name))) return;
+    if (low.startsWith("desk_")) return;
+    _floorObsBox.setFromObject(o);
+    _floorObsBox.getSize(_floorObsSize);
+    _floorObsBox.getCenter(_floorObsCenter);
+    const maxDim = Math.max(_floorObsSize.x, _floorObsSize.y, _floorObsSize.z);
+    if (maxDim > FLOOR_OBSTACLE_MAX_DIM) return;
+    if (_floorObsBox.min.y > FLOOR_OBSTACLE_MAX_BOTTOM_Y) return;
+    if (_floorObsCenter.y > FLOOR_OBSTACLE_MAX_CENTER_Y) return;
+    if (_floorObsBox.max.y > FLOOR_OBSTACLE_MAX_TOP_Y) return;
+    toRemove.push(o);
+  });
+  toRemove.forEach((o) => {
+    removed.push(o.name);
+    try {
+      if (o.material) {
+        if (Array.isArray(o.material)) {
+          o.material.forEach((m) => {
+            if (m?.map) m.map.dispose?.();
+            m?.dispose?.();
+          });
+        } else {
+          if (o.material.map) o.material.map.dispose?.();
+          o.material.dispose?.();
+        }
+      }
+      o.geometry?.dispose?.();
+      o.parent?.remove(o);
+    } catch (e) {
+      console.warn("removeFloorObstacleMeshes:", o.name, e);
+    }
+  });
+  if (removed.length) console.log("\u{1F9F9} \uBC14\uB2E5 \uC7A5\uC560\uBB3C \uC81C\uAC70:", removed.length, removed);
 }
 function hideDeptPanel() {
   selectedDeskData = null;
@@ -24902,31 +25412,41 @@ function showDeptPanel(deskData) {
     <div style="margin-top:6px;font-weight:700">${deskData.label || "-"}</div>
     <div style="margin-top:10px;opacity:.85;font-size:12px">
       deskId: ${deskData.deskId || "-"}<br/>
-      planetIndex: ${deskData.planetIndex ?? "-"}
+      planet: ${deskData.planetPath || deskData.planetTexture || "-"}
     </div>
   `;
   deptPanel.classList.remove("hidden");
 }
-function applyDeskLabels(model) {
-  const nameToLabel = new Map(
-    DESK_LABELS.map((d) => [normalizePlaneName(d.name), d])
-  );
-  const foundDesks = [];
+function findDeskMeshForKey(model, wantKey) {
+  let picked = null;
   model.traverse((child) => {
-    if (!child.isMesh) return;
+    if (picked) return;
     const key = normalizePlaneName(child.name);
-    const deskInfo = nameToLabel.get(key);
-    if (!deskInfo) return;
-    const mat = child.material;
-    const materials = Array.isArray(mat) ? mat : [mat];
-    const hasImgMaterial = materials.some(
-      (m) => m && (m.name && m.name.toLowerCase().startsWith("img.") || m.map)
-    );
-    if (!hasImgMaterial) return;
-    foundDesks.push({ mesh: child, key, deskInfo });
+    if (key !== wantKey) return;
+    if (child.isMesh) {
+      picked = child;
+      return;
+    }
+    child.traverse((c) => {
+      if (picked || !c.isMesh) return;
+      picked = c;
+    });
   });
+  return picked;
+}
+async function applyDeskLabelsAsync(model) {
+  const foundDesks = [];
+  for (const d of DESK_LABELS) {
+    const want = normalizePlaneName(d.name);
+    const mesh = findDeskMeshForKey(model, want);
+    if (mesh) foundDesks.push({ mesh, key: want, deskInfo: d });
+  }
   console.log(`=== \uB370\uC2A4\uD06C \uC6D0\uBCF8 \uBC1C\uACAC: ${foundDesks.length}\uAC1C ===`);
   console.log(foundDesks.map((d) => d.mesh.name));
+  try {
+    window.__lobbyDeskCount = foundDesks.length;
+  } catch (_) {
+  }
   const arrowPlaneMap = /* @__PURE__ */ new Set();
   DESK_ARROW_PLANES.forEach((g) => g.names.forEach((n) => arrowPlaneMap.add(normalizePlaneName(n))));
   const arrowPlanesToRemove = [];
@@ -24948,12 +25468,19 @@ function applyDeskLabels(model) {
     plane.parent?.remove(plane);
   });
   if (arrowPlanesToRemove.length) console.log(`<--> Plane \uC0AD\uC81C \uC644\uB8CC: ${arrowPlanesToRemove.length}\uAC1C`);
-  function replaceDeskWithIndependentMesh(desk) {
+  function replaceDeskWithIndependentMesh(desk, onDone) {
+    const finish = () => {
+      try {
+        onDone && onDone();
+      } catch (_) {
+      }
+    };
     const originalMesh = desk.mesh;
-    const { label, planetIndex } = desk.deskInfo;
-    const planetPath = PLANET_TEXTURES[planetIndex];
+    const { label, planetTexture } = desk.deskInfo;
+    const planetPath = planetTexture;
     if (!planetPath) {
-      console.warn(`\uD589\uC131 \uD14D\uC2A4\uCC98 \uACBD\uB85C \uC5C6\uC74C: ${originalMesh.name} (planetIndex=${planetIndex})`);
+      console.warn(`\uD589\uC131 \uD14D\uC2A4\uCC98 \uACBD\uB85C \uC5C6\uC74C: ${originalMesh.name}`);
+      finish();
       return;
     }
     originalMesh.updateMatrixWorld(true);
@@ -24990,23 +25517,34 @@ function applyDeskLabels(model) {
         newMesh.scale.copy(worldScale);
         newMesh.castShadow = true;
         newMesh.receiveShadow = true;
+        const deskEntryIndex = DESK_LABELS.findIndex((d) => normalizePlaneName(d.name) === desk.key);
         newMesh.userData = {
           isDesk: true,
           deskId: desk.key,
           deskName: originalMesh.name,
           label,
-          planetIndex,
-          planetPath
+          planetPath,
+          planetIndex: deskEntryIndex >= 0 ? deskEntryIndex : void 0
         };
         if (parent) parent.add(newMesh);
         else model.add(newMesh);
         console.log(`\u2713 \uB370\uC2A4\uD06C \uAD50\uCCB4 \uC644\uB8CC: ${originalMesh.name} \u2192 ${newMesh.name} (${label})`);
+        finish();
       },
       void 0,
-      (err) => console.error(`\u2717 \uD14D\uC2A4\uCC98 \uB85C\uB4DC \uC2E4\uD328: ${originalMesh.name} - ${planetPath}`, err)
+      (err) => {
+        console.error(`\u2717 \uD14D\uC2A4\uCC98 \uB85C\uB4DC \uC2E4\uD328: ${originalMesh.name} - ${planetPath}`, err);
+        finish();
+      }
     );
   }
-  foundDesks.forEach(replaceDeskWithIndependentMesh);
+  await Promise.all(
+    foundDesks.map(
+      (desk) => new Promise((resolve) => {
+        replaceDeskWithIndependentMesh(desk, resolve);
+      })
+    )
+  );
 }
 function applyMinimalLobbyPostProcess(model) {
   model.traverse((child) => {
@@ -25016,17 +25554,134 @@ function applyMinimalLobbyPostProcess(model) {
     }
   });
   scene.add(model);
+  showGlbVerifyBannerIfRequested();
   console.info(
     '[LOBBY] minimal \uBAA8\uB4DC: \uD6C4\uCC98\uB9AC \uC5C6\uC774 \uB85C\uB4DC\uB428. \uB370\uC2A4\uD06C/\uBC14\uB2E5\uC601\uC0C1/\uD37C\uC9C0\uB97C \uC4F0\uB824\uBA74 netlify/app.js \uC758 LOBBY_PROCESSING \uC744 "full" \uB85C \uBCC0\uACBD \uD6C4 bundle \uC7AC\uBE4C\uB4DC.'
   );
 }
+async function sniffFirstBytesFromUrl(url, maxLen = 16) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const reader = res.body?.getReader?.();
+  if (!reader) {
+    const ab = await res.arrayBuffer();
+    return new Uint8Array(ab.slice(0, Math.min(maxLen, ab.byteLength)));
+  }
+  const out = new Uint8Array(maxLen);
+  let n = 0;
+  while (n < maxLen) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const take = Math.min(value.length, maxLen - n);
+    out.set(value.subarray(0, take), n);
+    n += take;
+  }
+  try {
+    await reader.cancel();
+  } catch (_) {
+  }
+  return out.subarray(0, n);
+}
+function isBlenderBlendMagic(u8) {
+  if (!u8 || u8.length < 7) return false;
+  return String.fromCharCode(...u8.slice(0, 7)) === "BLENDER";
+}
+function isGLBinaryMagic(u8) {
+  if (!u8 || u8.length < 4) return false;
+  return u8[0] === 103 && u8[1] === 108 && u8[2] === 84 && u8[3] === 70;
+}
+function isProbablyGltfJson(u8) {
+  if (!u8 || u8.length < 1) return false;
+  const b = u8[0];
+  return b === 123 || b === 32 || b === 9 || b === 10 || b === 13;
+}
+function showLobbyLoadError(innerHtml) {
+  const cc = document.getElementById("canvas-container");
+  if (!cc || cc.querySelector(".lobby-load-error")) return;
+  const el = document.createElement("div");
+  el.className = "lobby-load-error";
+  el.setAttribute("role", "alert");
+  el.style.cssText = "position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#e8eeff;padding:24px;text-align:center;background:#0a0e17;z-index:4;font-family:system-ui,sans-serif;line-height:1.5;max-width:100%;box-sizing:border-box;";
+  el.innerHTML = innerHtml;
+  cc.appendChild(el);
+}
+function lobbyLoadErrorGeneric() {
+  showLobbyLoadError(
+    '<p>3D \uB85C\uBE44 \uBAA8\uB378\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.<br><span style="opacity:.75;font-size:13px">\uD30C\uC77C \uACBD\uB85C\xB7\uB124\uD2B8\uC6CC\uD06C\xB7\uB610\uB294 Draco/KHR \uD655\uC7A5 \uD638\uD658 \uC5EC\uBD80\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694. (\uBE0C\uB77C\uC6B0\uC800 \uAC1C\uBC1C\uC790 \uB3C4\uAD6C \uCF58\uC194 \uCC38\uACE0)</span></p>'
+  );
+}
+function showGlbVerifyBannerIfRequested() {
+  try {
+    if (!/[?&]glbverify=1(?:&|$)/.test(location.search || "")) return;
+    if (document.getElementById("lobby-glb-verify")) return;
+    const fp = window.__lobbyGlbFingerprint;
+    const div = document.createElement("div");
+    div.id = "lobby-glb-verify";
+    div.setAttribute("role", "status");
+    div.style.cssText = "position:fixed;top:8px;left:8px;z-index:10000;max-width:min(96vw,440px);background:rgba(40,12,12,.93);color:#fec;font:12px/1.4 ui-monospace,monospace;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,160,100,.45);pointer-events:none;white-space:pre-wrap;word-break:break-all;box-shadow:0 4px 16px rgba(0,0,0,.45)";
+    const lines = [
+      "[GLB \uAC80\uC99D] ?glbverify=1",
+      fp ? `\uC9C0\uBB38(\uD6C4\uCC98\uB9AC \uC804): mesh=${fp.meshCount} | \uBC15\uC2A4\u2248${fp.sizeX.toFixed(2)}\xD7${fp.sizeY.toFixed(2)}\xD7${fp.sizeZ.toFixed(2)}` : "(\uC9C0\uBB38 \uC5C6\uC74C)",
+      `\uCC98\uB9AC \uBAA8\uB4DC: ${fp?.processing || "?"}`,
+      String(fp?.url || LOBBY_MODEL_PATH),
+      "",
+      "GLB\uB9CC \uAD50\uCCB4\uD588\uB294\uB370 \uC9C0\uBB38\uC774 \uADF8\uB300\uB85C \u2192 \uB2E4\uB978 \uACBD\uB85C \uD30C\uC77C\uC774\uAC70\uB098 \uCE90\uC2DC.",
+      "\uC9C0\uBB38\uC740 \uBC14\uB00C\uB294\uB370 \uD654\uBA74\uB9CC \uAC19\uC74C \u2192 full \uD6C4\uCC98\uB9AC\uAC00 \uB36E\uC74C. minimal \uB85C \uBE44\uAD50."
+    ];
+    div.textContent = lines.join("\n");
+    document.body.appendChild(div);
+  } catch (_) {
+  }
+}
+function shouldShowLobbyDebug() {
+  try {
+    return /[?&]lobbydebug=1(?:&|$)/i.test(location.search || "");
+  } catch (_) {
+    return false;
+  }
+}
+function createLobbyDebugOverlay() {
+  if (document.getElementById("lobby-debug-overlay")) return;
+  const div = document.createElement("div");
+  div.id = "lobby-debug-overlay";
+  div.setAttribute("role", "status");
+  div.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:9999;max-width:min(96vw,420px);background:rgba(0,20,40,.88);color:#aee;font:11px/1.35 ui-monospace,monospace;padding:10px 12px;border-radius:10px;border:1px solid rgba(120,200,255,.35);pointer-events:none;white-space:pre-wrap;word-break:break-all;box-shadow:0 4px 20px rgba(0,0,0,.4)";
+  document.body.appendChild(div);
+  const tick = () => {
+    const lines = [
+      "[LOBBY DEBUG] URL \uC5D0 ?lobbydebug=1",
+      "build stamp \u2192 " + LOBBY_BUILD_STAMP,
+      "__isMobile (= ?mobileLobby=1) \u2192 " + (typeof window.__isMobile !== "undefined" ? window.__isMobile : "(unset)"),
+      "__useThreeLobby \u2192 " + (typeof window.__useThreeLobby !== "undefined" ? window.__useThreeLobby : "(unset)"),
+      "asset base \u2192 " + getBundleScriptBaseUrl(),
+      "GLB \u2192 " + LOBBY_MODEL_PATH,
+      "\uD6C4\uCC98\uB9AC \u2192 " + LOBBY_PROCESSING,
+      "\uB9E4\uCE6D \uB370\uC2A4\uD06C \uC218 \u2192 " + (typeof window.__lobbyDeskCount !== "undefined" ? window.__lobbyDeskCount : "(\uB85C\uB4DC \uC804)"),
+      "",
+      "2.5D\uB9CC: ?mobileLobby=1 (\uAE30\uBCF8\uC740 \uD56D\uC0C1 3D)"
+    ];
+    div.textContent = lines.join("\n");
+  };
+  tick();
+  setInterval(tick, 1500);
+}
+function lobbyLoadErrorBlendFile() {
+  showLobbyLoadError(
+    '<p>\uC774 \uD30C\uC77C\uC740 <strong>Blender \uC6D0\uBCF8(.blend)</strong>\uC785\uB2C8\uB2E4. \uC6F9\uC5D0\uC11C\uB294 <strong>glTF 2.0 \uBC14\uC774\uB108\uB9AC(.glb)</strong>\uB9CC \uBD88\uB7EC\uC62C \uC218 \uC788\uC2B5\uB2C8\uB2E4.</p><p style="opacity:.85;font-size:13px;margin-top:12px;text-align:left;max-width:520px;margin-left:auto;margin-right:auto">Blender \uBA54\uB274\uC5D0\uC11C <strong>\uD30C\uC77C \u2192 \uB0B4\uBCF4\uB0B4\uAE30 \u2192 glTF 2.0 (.glb)</strong>\uB85C \uB0B4\uBCF4\uB0B8 \uB4A4, \uADF8 \uD30C\uC77C\uC744 <code style="font-size:12px">netlify/assets/nurion_lobby.glb</code> \uC704\uCE58\uC5D0 \uB450\uACE0 <code style="font-size:12px">npm run build:netlify</code> \uD6C4 \uB2E4\uC2DC \uBC30\uD3EC\uD558\uC138\uC694. <strong>.blend</strong>\uB97C \uBCF5\uC0AC\uD55C \uB4A4 \uD655\uC7A5\uC790\uB9CC <code>.glb</code>\uB85C \uBC14\uAFB8\uBA74 \uB3D9\uC791\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.</p>'
+  );
+}
 function initThree() {
-  window.__isMobile = isMobileDevice();
+  window.__isMobile = useMobileLobbyPath();
+  window.__useThreeLobby = !window.__isMobile;
+  if (shouldShowLobbyDebug()) {
+    createLobbyDebugOverlay();
+  }
   if (window.__isMobile) {
-    window.__useThreeLobby = false;
+    console.warn(
+      "[LOBBY] ?mobileLobby=1 \uBD84\uAE30 \u2014 WebGL\xB7\uB370\uC2A4\uD06C \uD6C4\uCC98\uB9AC \uC0DD\uB7B5. \uC77C\uBC18 PC 3D \uB294 \uC774 \uBD84\uAE30\uAC00 false \uC5EC\uC57C \uD569\uB2C8\uB2E4."
+    );
     return;
   }
-  window.__useThreeLobby = true;
   const container = document.getElementById("canvas-container");
   scene = new Scene();
   window.scene = scene;
@@ -25080,396 +25735,447 @@ function initThree() {
     }
   });
   const loader = new GLTFLoader();
-  loader.load(
-    LOBBY_MODEL_PATH,
-    (gltf) => {
-      lobbyModel = gltf.scene;
-      if (LOBBY_PROCESSING === "minimal") {
-        applyMinimalLobbyPostProcess(lobbyModel);
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
+  loader.setDRACOLoader(dracoLoader);
+  (async () => {
+    try {
+      const head = await sniffFirstBytesFromUrl(LOBBY_MODEL_PATH);
+      if (isBlenderBlendMagic(head)) {
+        console.error("[LOBBY] .blend \uD30C\uC77C\uC774 \uB85C\uBE44 GLB \uACBD\uB85C\uC5D0 \uC788\uC2B5\uB2C8\uB2E4:", LOBBY_MODEL_PATH);
+        lobbyLoadErrorBlendFile();
         return;
       }
-      console.log("=== GLB \uD14D\uC2A4\uCC98/\uC774\uBBF8\uC9C0 \uC815\uBCF4 ===");
-      try {
-        const parser = gltf.parser || gltf.userData?.parser;
-        if (parser && parser.json) {
-          const json = parser.json;
-          if (json.images) {
-            console.log(`GLB Images \uCD1D ${json.images.length}\uAC1C:`);
-            json.images.forEach((img, i) => {
-              const info = {
-                index: i,
-                uri: img.uri || "(embedded)",
-                name: img.name || `image_${i}`,
-                mimeType: img.mimeType || "unknown"
-              };
-              console.log(`  [${i}] ${info.name}: ${info.uri} (${info.mimeType})`);
-            });
-          }
-          if (json.textures) {
-            console.log(`
-GLB Textures \uCD1D ${json.textures.length}\uAC1C:`);
-            json.textures.forEach((tex, i) => {
-              const imgInfo = json.images && json.images[tex.source] ? `\u2192 ${json.images[tex.source].uri || json.images[tex.source].name || `image_${tex.source}`}` : `\u2192 source: ${tex.source}`;
-              console.log(`  [${i}] ${tex.name || `texture_${i}`} ${imgInfo}`);
-            });
-          }
-          if (json.materials) {
-            console.log(`
-GLB Materials \uCD1D ${json.materials.length}\uAC1C:`);
-            json.materials.forEach((mat, i) => {
-              const pbr = mat.pbrMetallicRoughness;
-              const baseTex = pbr?.baseColorTexture?.index;
-              const emissiveTex = mat.emissiveTexture?.index;
-              if (baseTex !== void 0 || emissiveTex !== void 0) {
-                console.log(`  [${i}] ${mat.name || `material_${i}`}:`);
-                if (baseTex !== void 0) {
-                  const imgIdx = json.textures[baseTex]?.source;
-                  const imgUri = imgIdx !== void 0 && json.images[imgIdx] ? json.images[imgIdx].uri || json.images[imgIdx].name || `image_${imgIdx}` : "unknown";
-                  console.log(`    baseColorTexture: texture[${baseTex}] \u2192 ${imgUri}`);
+      if (!isGLBinaryMagic(head) && !isProbablyGltfJson(head)) {
+        console.warn("[LOBBY] glTF \uBC14\uC774\uB108\uB9AC/JSON \uC2DC\uADF8\uB2C8\uCC98\uAC00 \uC544\uB2D9\uB2C8\uB2E4. \uCCAB \uBC14\uC774\uD2B8:", head[0], head[1], head[2], head[3]);
+      }
+    } catch (sniffErr) {
+      console.warn("[LOBBY] \uD30C\uC77C \uD5E4\uB354 \uD655\uC778 \uC2E4\uD328 \u2014 GLTFLoader\uB85C \uACC4\uC18D\uD569\uB2C8\uB2E4:", sniffErr);
+    }
+    loader.load(
+      LOBBY_MODEL_PATH,
+      (gltf) => {
+        lobbyModel = gltf.scene;
+        lobbyModel.updateMatrixWorld(true);
+        const _fpBox = new Box3().setFromObject(lobbyModel);
+        const _fpSize = new Vector3();
+        _fpBox.getSize(_fpSize);
+        let _fpMesh = 0;
+        lobbyModel.traverse((c) => {
+          if (c.isMesh) _fpMesh++;
+        });
+        try {
+          window.__lobbyGlbFingerprint = {
+            meshCount: _fpMesh,
+            sizeX: _fpSize.x,
+            sizeY: _fpSize.y,
+            sizeZ: _fpSize.z,
+            processing: LOBBY_PROCESSING,
+            url: LOBBY_MODEL_PATH
+          };
+        } catch (_) {
+        }
+        console.info(
+          "[LOBBY] GLB \uC9C0\uBB38(\uD6C4\uCC98\uB9AC \uC804): mesh=" + _fpMesh + " | \uC6D4\uB4DC \uBC15\uC2A4 \uD06C\uAE30\u2248" + _fpSize.x.toFixed(2) + "\xD7" + _fpSize.y.toFixed(2) + "\xD7" + _fpSize.z.toFixed(2) + " | \uBAA8\uB4DC=" + LOBBY_PROCESSING
+        );
+        console.info(
+          "[LOBBY] GLB \uD30C\uC77C\uC744 \uBC14\uAFE8\uB294\uB370 \uC774 \uC9C0\uBB38 \uC22B\uC790\uAC00 \uADF8\uB300\uB85C\uBA74 \u2192 \uB2E4\uB978 \uACBD\uB85C\uC758 \uD30C\uC77C\uC744 \uBCF4\uAC70\uB098 \uCE90\uC2DC\uC785\uB2C8\uB2E4. \uC22B\uC790\uAC00 \uBC14\uB00C\uB294\uB370 \uD654\uBA74\uB9CC \uAC19\uC73C\uBA74 \u2192 full \uBAA8\uB4DC \uD6C4\uCC98\uB9AC\uAC00 \uC52C\uC744 \uB36E\uC5B4\uC4F4 \uAC83\uC77C \uC218 \uC788\uC2B5\uB2C8\uB2E4(\uC544\uB798 minimal \uC548\uB0B4)."
+        );
+        if (LOBBY_PROCESSING === "full") {
+          console.info(
+            '[LOBBY] full: \uB370\uC2A4\uD06C \uD589\uC131\xB7\uD37C\uC9C0\xB7\uBC14\uB2E5 \uC601\uC0C1 \uB4F1\uC73C\uB85C \uD3B8\uC9D1\uD55C GLB\uC640 \uD654\uBA74\uC774 \uB9CE\uC774 \uB2EC\uB77C\uC9C8 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC6D0\uBCF8\uB9CC \uD655\uC778\uD558\uB824\uBA74 app.js \uC5D0\uC11C LOBBY_PROCESSING \uC744 "minimal" \uB85C \uBC14\uAFBC \uB4A4 npm run build:netlify'
+          );
+        }
+        if (LOBBY_PROCESSING === "minimal") {
+          applyMinimalLobbyPostProcess(lobbyModel);
+          return;
+        }
+        (async () => {
+          try {
+            let purgeHologramLikeObjects = function(model) {
+              const removed = [];
+              const killName = /(holo|hologram|sign|banner|billboard|placard|stand)/i;
+              model.traverse((o) => {
+                if (!o.isMesh) return;
+                const n = o.name || "";
+                const mat = o.material;
+                const mats = Array.isArray(mat) ? mat : [mat];
+                const matNameHit = mats.some((m) => (m?.name || "").toLowerCase().includes("holo"));
+                if (killName.test(n) || matNameHit || o.userData?.isHologram) {
+                  removed.push(n || "(unnamed)");
+                  o.visible = false;
+                  if (o.material) {
+                    if (Array.isArray(o.material)) o.material.forEach((m) => m?.dispose?.());
+                    else o.material.dispose?.();
+                  }
+                  o.geometry?.dispose?.();
+                  o.parent?.remove(o);
                 }
-                if (emissiveTex !== void 0) {
-                  const imgIdx = json.textures[emissiveTex]?.source;
-                  const imgUri = imgIdx !== void 0 && json.images[imgIdx] ? json.images[imgIdx].uri || json.images[imgIdx].name || `image_${imgIdx}` : "unknown";
-                  console.log(`    emissiveTexture: texture[${emissiveTex}] \u2192 ${imgUri}`);
+              });
+              if (removed.length) console.log("\u{1F9F9} \uD640\uB85C\uADF8\uB7A8/\uAC04\uD310 \uD6C4\uBCF4 \uC81C\uAC70:", removed);
+            }, purgeAdditionalPlanes = function(model) {
+              const removed = [];
+              const matHints = ["img", "hud", "pre", "placard", "banner", "billboard"];
+              model.traverse((o) => {
+                if (!o.isMesh) return;
+                if (o.userData?.isDesk) return;
+                const type = o.geometry?.type || "";
+                const y = o.position && typeof o.position.y === "number" ? o.position.y : 0;
+                const name = o.name || "";
+                const mats = Array.isArray(o.material) ? o.material : [o.material];
+                const matNames = mats.map((m) => m && m.name || "").join(" ").toLowerCase();
+                const isPlane = type.toLowerCase().includes("plane");
+                const matHintHit = matHints.some((h) => matNames.includes(h));
+                const nameHint = /(sign|banner|billboard|placard|hologram|holo)/i.test(name);
+                if (isPlane && (y > 0.9 || matHintHit || nameHint)) {
+                  removed.push(name || `(id:${o.id})`);
+                  try {
+                    o.visible = false;
+                    if (o.material) {
+                      if (Array.isArray(o.material)) o.material.forEach((m) => m?.dispose?.());
+                      else o.material.dispose?.();
+                    }
+                    if (o.geometry && o.geometry.dispose) o.geometry.dispose();
+                    if (o.parent) o.parent.remove(o);
+                  } catch (e) {
+                    console.warn("purgeAdditionalPlanes: \uC81C\uAC70 \uC2E4\uD328", o.name, e);
+                  }
                 }
+              });
+              if (removed.length) console.log("\u{1F9F9} \uCD94\uAC00 Plane \uC81C\uAC70:", removed);
+            }, runPurgesRepeatedly = function(model) {
+              try {
+                purgeHologramLikeObjects(model);
+              } catch (e) {
+                console.warn("purgeHologramLikeObjects \uC2E4\uD328:", e);
               }
-            });
-          }
-        }
-      } catch (e) {
-        console.log("GLB JSON \uD30C\uC2F1 \uC815\uBCF4 \uC811\uADFC \uBD88\uAC00:", e);
-      }
-      console.log("=== GLB \uC815\uBCF4 \uBD84\uC11D \uC644\uB8CC ===\n");
-      const namesList = [];
-      const toRemove = [];
-      let floorMaterialColor = null;
-      const blueFloorMeshes = [];
-      lobbyModel.traverse((child) => {
-        if (child.isMesh && child.name.toLowerCase().includes("floor")) {
-          const mats = child.material ? Array.isArray(child.material) ? child.material : [child.material] : [];
-          if (mats.length > 0 && mats[0].color) floorMaterialColor = mats[0].color.clone();
-        }
-      });
-      lobbyModel.traverse((child) => {
-        if (DEBUG_LOG_GLB_NAMES) namesList.push(child.name || "(unnamed)");
-        if (child.isMesh) child.castShadow = child.receiveShadow = true;
-        const n = child.name.toLowerCase();
-        const mats = child.material ? Array.isArray(child.material) ? child.material : [child.material] : [];
-        const matName = mats.map((m) => m && m.name || "").join(" ").toLowerCase();
-        const isText = HIDE_TEXT_PATTERN.test(child.name) || n.includes("text");
-        const isPageText = HIDE_PAGE_TEXT_PATTERN.test(child.name);
-        const isPeople = HIDE_PEOPLE_PATTERN.test(n) || HIDE_PEOPLE_PATTERN.test(matName) || HIDE_OBJECT_NAMES_EXACT.includes(child.name);
-        const isFloor = n.includes("floor");
-        const isFloorLineMat = HIDE_FLOOR_LINE_MAT_PATTERN.test(matName);
-        const isBlue = child.name.includes("n_419") || n.includes("blue") || matName.includes("blue_light") || mats.some((m) => m && m.color && m.color.b > m.color.r && m.color.b > m.color.g && m.color.b > 0.2);
-        if (isText || isPeople) toRemove.push(child);
-        if (isPageText) child.visible = false;
-        if (isFloorLineMat && !isFloor) child.visible = false;
-        if (isBlue && !isFloor) blueFloorMeshes.push(child);
-      });
-      toRemove.forEach((obj) => {
-        if (obj.parent) obj.parent.remove(obj);
-      });
-      const arrowPlaneNames = [];
-      DESK_ARROW_PLANES.forEach((group) => {
-        group.names.forEach((n) => {
-          arrowPlaneNames.push(normalizePlaneName(n));
-        });
-      });
-      const arrowPlanesToRemove = [];
-      lobbyModel.traverse((child) => {
-        if (!child.isMesh) return;
-        const key = normalizePlaneName(child.name);
-        if (arrowPlaneNames.includes(key)) {
-          child.visible = false;
-          child.castShadow = false;
-          child.receiveShadow = false;
-          arrowPlanesToRemove.push(child);
-        }
-      });
-      arrowPlanesToRemove.forEach((plane) => {
-        if (plane.material) {
-          if (Array.isArray(plane.material)) {
-            plane.material.forEach((m) => {
-              if (m && m.map) m.map.dispose();
-              if (m && m.emissiveMap) m.emissiveMap.dispose();
-              if (m && m.normalMap) m.normalMap.dispose();
-              if (m && m.dispose) m.dispose();
-            });
-          } else {
-            if (plane.material.map) plane.material.map.dispose();
-            if (plane.material.emissiveMap) plane.material.emissiveMap.dispose();
-            if (plane.material.normalMap) plane.material.normalMap.dispose();
-            if (plane.material.dispose) plane.material.dispose();
-          }
-        }
-        if (plane.geometry && plane.geometry.dispose) plane.geometry.dispose();
-        if (plane.parent) {
-          plane.parent.remove(plane);
-          console.log(`<--> Plane \uC0AD\uC81C (GLB \uB85C\uB4DC \uC9C1\uD6C4): ${plane.name}`);
-        }
-      });
-      if (arrowPlanesToRemove.length > 0) {
-        console.log(`<--> Plane \uC0AD\uC81C \uC644\uB8CC (GLB \uB85C\uB4DC \uC9C1\uD6C4): ${arrowPlanesToRemove.length}\uAC1C`);
-      }
-      if (blueFloorMeshes.length > 0) {
-        let videoTexture = null;
-        if (!window.__isMobile) {
-          const adVideo = document.createElement("video");
-          adVideo.src = VIDEO_AD_PATH;
-          adVideo.crossOrigin = "anonymous";
-          adVideo.muted = true;
-          adVideo.loop = true;
-          adVideo.playsInline = true;
-          adVideo.play().catch((err) => {
-            console.warn("adVideo.play() failed:", err);
-          });
-          videoTexture = new VideoTexture(adVideo);
-          videoTexture.colorSpace = SRGBColorSpace;
-          videoTexture.minFilter = videoTexture.magFilter = LinearFilter;
-        } else {
-          console.log("Skipping ad video on mobile for stability");
-        }
-        blueFloorMeshes.forEach((mesh) => {
-          const mat = mesh.material;
-          const materials = Array.isArray(mat) ? [...mat] : [mat];
-          const newMats = materials.map((m) => {
-            if (!m || !m.clone) return m;
-            const newMat = m.clone();
-            if (videoTexture) newMat.map = videoTexture;
-            return newMat;
-          });
-          mesh.material = newMats.length === 1 ? newMats[0] : newMats;
-        });
-      }
-      applyDeskLabels(lobbyModel);
-      function purgeHologramLikeObjects(model) {
-        const removed = [];
-        const killName = /(holo|hologram|sign|banner|billboard|placard|stand)/i;
-        model.traverse((o) => {
-          if (!o.isMesh) return;
-          const n = o.name || "";
-          const mat = o.material;
-          const mats = Array.isArray(mat) ? mat : [mat];
-          const matNameHit = mats.some((m) => (m?.name || "").toLowerCase().includes("holo"));
-          if (killName.test(n) || matNameHit || o.userData?.isHologram) {
-            removed.push(n || "(unnamed)");
-            o.visible = false;
-            if (o.material) {
-              if (Array.isArray(o.material)) o.material.forEach((m) => m?.dispose?.());
-              else o.material.dispose?.();
-            }
-            o.geometry?.dispose?.();
-            o.parent?.remove(o);
-          }
-        });
-        if (removed.length) console.log("\u{1F9F9} \uD640\uB85C\uADF8\uB7A8/\uAC04\uD310 \uD6C4\uBCF4 \uC81C\uAC70:", removed);
-      }
-      purgeHologramLikeObjects(lobbyModel);
-      function purgeAdditionalPlanes(model) {
-        const removed = [];
-        const matHints = ["img", "hud", "pre", "placard", "banner", "billboard"];
-        model.traverse((o) => {
-          if (!o.isMesh) return;
-          if (o.userData?.isDesk) return;
-          const type = o.geometry?.type || "";
-          const y = o.position && typeof o.position.y === "number" ? o.position.y : 0;
-          const name = o.name || "";
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          const matNames = mats.map((m) => m && m.name || "").join(" ").toLowerCase();
-          const isPlane = type.toLowerCase().includes("plane");
-          const matHintHit = matHints.some((h) => matNames.includes(h));
-          const nameHint = /(sign|banner|billboard|placard|hologram|holo)/i.test(name);
-          if (isPlane && (y > 0.9 || matHintHit || nameHint)) {
-            removed.push(name || `(id:${o.id})`);
+              try {
+                purgeAdditionalPlanes(model);
+              } catch (e) {
+                console.warn("purgeAdditionalPlanes \uC2E4\uD328:", e);
+              }
+              setTimeout(() => {
+                try {
+                  purgeHologramLikeObjects(model);
+                  purgeAdditionalPlanes(model);
+                } catch (e) {
+                }
+              }, 300);
+              setTimeout(() => {
+                try {
+                  purgeHologramLikeObjects(model);
+                  purgeAdditionalPlanes(model);
+                } catch (e) {
+                }
+              }, 1e3);
+            };
+            console.log("=== GLB \uD14D\uC2A4\uCC98/\uC774\uBBF8\uC9C0 \uC815\uBCF4 ===");
             try {
-              o.visible = false;
-              if (o.material) {
-                if (Array.isArray(o.material)) o.material.forEach((m) => m?.dispose?.());
-                else o.material.dispose?.();
+              const parser = gltf.parser || gltf.userData?.parser;
+              if (parser && parser.json) {
+                const json = parser.json;
+                if (json.images) {
+                  console.log(`GLB Images \uCD1D ${json.images.length}\uAC1C:`);
+                  json.images.forEach((img, i) => {
+                    const info = {
+                      index: i,
+                      uri: img.uri || "(embedded)",
+                      name: img.name || `image_${i}`,
+                      mimeType: img.mimeType || "unknown"
+                    };
+                    console.log(`  [${i}] ${info.name}: ${info.uri} (${info.mimeType})`);
+                  });
+                }
+                if (json.textures) {
+                  console.log(`
+GLB Textures \uCD1D ${json.textures.length}\uAC1C:`);
+                  json.textures.forEach((tex, i) => {
+                    const imgInfo = json.images && json.images[tex.source] ? `\u2192 ${json.images[tex.source].uri || json.images[tex.source].name || `image_${tex.source}`}` : `\u2192 source: ${tex.source}`;
+                    console.log(`  [${i}] ${tex.name || `texture_${i}`} ${imgInfo}`);
+                  });
+                }
+                if (json.materials) {
+                  console.log(`
+GLB Materials \uCD1D ${json.materials.length}\uAC1C:`);
+                  json.materials.forEach((mat, i) => {
+                    const pbr = mat.pbrMetallicRoughness;
+                    const baseTex = pbr?.baseColorTexture?.index;
+                    const emissiveTex = mat.emissiveTexture?.index;
+                    if (baseTex !== void 0 || emissiveTex !== void 0) {
+                      console.log(`  [${i}] ${mat.name || `material_${i}`}:`);
+                      if (baseTex !== void 0) {
+                        const imgIdx = json.textures[baseTex]?.source;
+                        const imgUri = imgIdx !== void 0 && json.images[imgIdx] ? json.images[imgIdx].uri || json.images[imgIdx].name || `image_${imgIdx}` : "unknown";
+                        console.log(`    baseColorTexture: texture[${baseTex}] \u2192 ${imgUri}`);
+                      }
+                      if (emissiveTex !== void 0) {
+                        const imgIdx = json.textures[emissiveTex]?.source;
+                        const imgUri = imgIdx !== void 0 && json.images[imgIdx] ? json.images[imgIdx].uri || json.images[imgIdx].name || `image_${imgIdx}` : "unknown";
+                        console.log(`    emissiveTexture: texture[${emissiveTex}] \u2192 ${imgUri}`);
+                      }
+                    }
+                  });
+                }
               }
-              if (o.geometry && o.geometry.dispose) o.geometry.dispose();
-              if (o.parent) o.parent.remove(o);
             } catch (e) {
-              console.warn("purgeAdditionalPlanes: \uC81C\uAC70 \uC2E4\uD328", o.name, e);
+              console.log("GLB JSON \uD30C\uC2F1 \uC815\uBCF4 \uC811\uADFC \uBD88\uAC00:", e);
             }
-          }
-        });
-        if (removed.length) console.log("\u{1F9F9} \uCD94\uAC00 Plane \uC81C\uAC70:", removed);
-      }
-      try {
-        purgeAdditionalPlanes(lobbyModel);
-      } catch (e) {
-        console.warn("purgeAdditionalPlanes \uC2E4\uD589 \uC2E4\uD328:", e);
-      }
-      function collectCylinderCandidates(model) {
-        const out = [];
-        model.traverse((obj) => {
-          if (!obj.isMesh) return;
-          const type = obj.geometry?.type || "";
-          const name = (obj.name || "").toLowerCase();
-          if (type.includes("Cylinder") || name.includes("cylinder") || name.includes("tube")) {
-            out.push(obj);
-          }
-        });
-        return out;
-      }
-      function findNearestMeshToPoint(meshes, worldPoint) {
-        let best = null;
-        let bestD = Infinity;
-        const p = new Vector3();
-        for (const m of meshes) {
-          m.getWorldPosition(p);
-          const d = p.distanceTo(worldPoint);
-          if (d < bestD) {
-            bestD = d;
-            best = m;
-          }
-        }
-        return { best, bestD };
-      }
-      const cylinders = collectCylinderCandidates(lobbyModel);
-      const desks = [];
-      lobbyModel.traverse((o) => {
-        if (o.isMesh && o.userData?.isDesk && o.userData?.label) desks.push(o);
-      });
-      desks.forEach((desk) => {
-        const wp = new Vector3();
-        desk.getWorldPosition(wp);
-        const { best, bestD } = findNearestMeshToPoint(cylinders, wp);
-        if (best && bestD < 6) {
-          addCameraFacingLabelSleeveOnCylinder(best, desk.userData.label);
-        } else {
-          console.warn(`\u26A0 \uC6D0\uD1B5 \uB9E4\uCE6D \uC2E4\uD328/\uAC70\uB9AC\uCD08\uACFC: ${desk.userData.label} (dist=${bestD.toFixed(2)})`);
-        }
-      });
-      if (DEBUG_LOG_GLB_NAMES) console.log("GLB \uC624\uBE0C\uC81D\uD2B8 \uC774\uB984 \uBAA9\uB85D:", namesList);
-      console.log("=== \uC52C\uC758 \uBAA8\uB4E0 Mesh \uAC1D\uCCB4 (\uD640\uB85C\uADF8\uB7A8 \uCC3E\uAE30\uC6A9) ===");
-      const allMeshes = [];
-      lobbyModel.traverse((obj) => {
-        if (obj.isMesh) {
-          allMeshes.push({
-            name: obj.name || "unnamed",
-            type: obj.geometry?.type || "unknown",
-            position: obj.position,
-            visible: obj.visible,
-            materialName: obj.material?.name || (Array.isArray(obj.material) ? obj.material.map((m) => m?.name).join(",") : "none"),
-            userData: obj.userData
-          });
-        }
-      });
-      console.log("\uCD1D Mesh \uAC1C\uC218:", allMeshes.length);
-      console.table(allMeshes);
-      const suspiciousMeshes = allMeshes.filter(
-        (m) => m.type === "PlaneGeometry" && m.position.y > 1 && (m.name.toLowerCase().includes("plane") || m.materialName.toLowerCase().includes("hud") || m.materialName.toLowerCase().includes("img"))
-      );
-      console.log("=== \uD640\uB85C\uADF8\uB7A8\uC73C\uB85C \uC758\uC2EC\uB418\uB294 Mesh (Y > 1.0, PlaneGeometry) ===");
-      console.table(suspiciousMeshes);
-      window.debugScene = scene;
-      window.debugLobbyModel = lobbyModel;
-      window.debugRemoveMeshByName = function(name) {
-        let found = false;
-        scene.traverse((obj) => {
-          if (obj.isMesh && obj.name === name) {
-            obj.visible = false;
-            if (obj.parent) obj.parent.remove(obj);
-            if (obj.material) {
-              if (Array.isArray(obj.material)) {
-                obj.material.forEach((m) => {
-                  if (m && m.dispose) m.dispose();
-                });
-              } else {
-                if (obj.material.dispose) obj.material.dispose();
+            console.log("=== GLB \uC815\uBCF4 \uBD84\uC11D \uC644\uB8CC ===\n");
+            const namesList = [];
+            const toRemove = [];
+            let floorMaterialColor = null;
+            const blueFloorMeshes = [];
+            lobbyModel.traverse((child) => {
+              const nm = child.name || "";
+              if (child.isMesh && nm.toLowerCase().includes("floor")) {
+                const mats = child.material ? Array.isArray(child.material) ? child.material : [child.material] : [];
+                if (mats.length > 0 && mats[0].color) floorMaterialColor = mats[0].color.clone();
               }
+            });
+            lobbyModel.traverse((child) => {
+              if (DEBUG_LOG_GLB_NAMES) namesList.push(child.name || "(unnamed)");
+              if (child.isMesh) child.castShadow = child.receiveShadow = true;
+              const n = (child.name || "").toLowerCase();
+              const mats = child.material ? Array.isArray(child.material) ? child.material : [child.material] : [];
+              const matName = mats.map((m) => m && m.name || "").join(" ").toLowerCase();
+              const rawName = child.name || "";
+              const isText = HIDE_TEXT_PATTERN.test(rawName) || n.includes("text");
+              const isPageText = HIDE_PAGE_TEXT_PATTERN.test(rawName);
+              const isPeople = HIDE_PEOPLE_PATTERN.test(n) || HIDE_PEOPLE_PATTERN.test(matName) || HIDE_OBJECT_NAMES_EXACT.includes(rawName);
+              const isFloor = n.includes("floor");
+              const isFloorLineMat = HIDE_FLOOR_LINE_MAT_PATTERN.test(matName);
+              const isBlue = rawName.includes("n_419") || n.includes("blue") || matName.includes("blue_light") || mats.some((m) => m && m.color && m.color.b > m.color.r && m.color.b > m.color.g && m.color.b > 0.2);
+              if (isText || isPeople) toRemove.push(child);
+              if (isPageText) child.visible = false;
+              if (isFloorLineMat && !isFloor) child.visible = false;
+              if (isBlue && !isFloor) blueFloorMeshes.push(child);
+            });
+            toRemove.forEach((obj) => {
+              if (obj.parent) obj.parent.remove(obj);
+            });
+            const arrowPlaneNames = [];
+            DESK_ARROW_PLANES.forEach((group) => {
+              group.names.forEach((n) => {
+                arrowPlaneNames.push(normalizePlaneName(n));
+              });
+            });
+            const arrowPlanesToRemove = [];
+            lobbyModel.traverse((child) => {
+              if (!child.isMesh) return;
+              const key = normalizePlaneName(child.name);
+              if (arrowPlaneNames.includes(key)) {
+                child.visible = false;
+                child.castShadow = false;
+                child.receiveShadow = false;
+                arrowPlanesToRemove.push(child);
+              }
+            });
+            arrowPlanesToRemove.forEach((plane) => {
+              if (plane.material) {
+                if (Array.isArray(plane.material)) {
+                  plane.material.forEach((m) => {
+                    if (m && m.map) m.map.dispose();
+                    if (m && m.emissiveMap) m.emissiveMap.dispose();
+                    if (m && m.normalMap) m.normalMap.dispose();
+                    if (m && m.dispose) m.dispose();
+                  });
+                } else {
+                  if (plane.material.map) plane.material.map.dispose();
+                  if (plane.material.emissiveMap) plane.material.emissiveMap.dispose();
+                  if (plane.material.normalMap) plane.material.normalMap.dispose();
+                  if (plane.material.dispose) plane.material.dispose();
+                }
+              }
+              if (plane.geometry && plane.geometry.dispose) plane.geometry.dispose();
+              if (plane.parent) {
+                plane.parent.remove(plane);
+                console.log(`<--> Plane \uC0AD\uC81C (GLB \uB85C\uB4DC \uC9C1\uD6C4): ${plane.name}`);
+              }
+            });
+            if (arrowPlanesToRemove.length > 0) {
+              console.log(`<--> Plane \uC0AD\uC81C \uC644\uB8CC (GLB \uB85C\uB4DC \uC9C1\uD6C4): ${arrowPlanesToRemove.length}\uAC1C`);
             }
-            if (obj.geometry && obj.geometry.dispose) obj.geometry.dispose();
-            console.log(`\u2713 \uC81C\uAC70 \uC644\uB8CC: ${name}`);
-            found = true;
+            if (blueFloorMeshes.length > 0) {
+              let videoTexture = null;
+              if (!window.__isMobile) {
+                const adVideo = document.createElement("video");
+                adVideo.src = VIDEO_AD_PATH;
+                adVideo.crossOrigin = "anonymous";
+                adVideo.muted = true;
+                adVideo.loop = true;
+                adVideo.playsInline = true;
+                adVideo.play().catch((err) => {
+                  console.warn("adVideo.play() failed:", err);
+                });
+                videoTexture = new VideoTexture(adVideo);
+                videoTexture.colorSpace = SRGBColorSpace;
+                videoTexture.minFilter = videoTexture.magFilter = LinearFilter;
+              } else {
+                console.log("Skipping ad video on mobile for stability");
+              }
+              blueFloorMeshes.forEach((mesh) => {
+                const mat = mesh.material;
+                const materials = Array.isArray(mat) ? [...mat] : [mat];
+                const newMats = materials.map((m) => {
+                  if (!m || !m.clone) return m;
+                  const newMat = m.clone();
+                  if (videoTexture) newMat.map = videoTexture;
+                  return newMat;
+                });
+                mesh.material = newMats.length === 1 ? newMats[0] : newMats;
+              });
+            }
+            await applyDeskLabelsAsync(lobbyModel);
+            removeFloorObstacleMeshes(lobbyModel);
+            purgeHologramLikeObjects(lobbyModel);
+            try {
+              purgeAdditionalPlanes(lobbyModel);
+            } catch (e) {
+              console.warn("purgeAdditionalPlanes \uC2E4\uD589 \uC2E4\uD328:", e);
+            }
+            const cylinders = collectCylinderLabelAnchorCandidates(lobbyModel);
+            if (cylinders.length === 0) {
+              console.info("[LOBBY] \uC6D0\uD1B5\xB7\uAE30\uB465 \uD6C4\uBCF4 \uBA54\uC2DC 0\uAC1C \u2014 \uB370\uC2A4\uD06C\uBCC4 \uD569\uC131 \uC575\uCEE4\uB85C \uB77C\uBCA8 \uBD80\uCC29");
+            }
+            const desks = [];
+            lobbyModel.traverse((o) => {
+              if (o.isMesh && o.userData?.isDesk && o.userData?.label) desks.push(o);
+            });
+            const LABEL_MATCH_MAX_DIST = 10;
+            desks.forEach((desk) => {
+              const wp = new Vector3();
+              desk.getWorldPosition(wp);
+              const { best, bestD } = findNearestMeshToPoint(cylinders, wp);
+              if (best && bestD < LABEL_MATCH_MAX_DIST) {
+                if (best.userData.__hasDeskLabel) {
+                  addSyntheticCylinderLabelAnchor(desk, desk.userData.label);
+                  console.info(`\u2139 ${desk.userData.label}: \uC778\uADFC \uC6D0\uD1B5\uC774 \uC774\uBBF8 \uB77C\uBCA8 \uC0AC\uC6A9 \uC911 \u2192 \uD569\uC131 \uC575\uCEE4`);
+                } else {
+                  addCameraFacingLabelSleeveOnCylinder(best, desk.userData.label);
+                }
+              } else {
+                addSyntheticCylinderLabelAnchor(desk, desk.userData.label);
+                if (cylinders.length > 0 && best) {
+                  console.info(`\u2139 ${desk.userData.label}: \uCD5C\uADFC\uC811 \uAE30\uB465 \uAC70\uB9AC ${bestD.toFixed(2)}m \u2014 \uD569\uC131 \uC575\uCEE4`);
+                }
+              }
+            });
+            if (DEBUG_LOG_GLB_NAMES) console.log("GLB \uC624\uBE0C\uC81D\uD2B8 \uC774\uB984 \uBAA9\uB85D:", namesList);
+            console.log("=== \uC52C\uC758 \uBAA8\uB4E0 Mesh \uAC1D\uCCB4 (\uD640\uB85C\uADF8\uB7A8 \uCC3E\uAE30\uC6A9) ===");
+            const allMeshes = [];
+            lobbyModel.traverse((obj) => {
+              if (obj.isMesh) {
+                allMeshes.push({
+                  name: obj.name || "unnamed",
+                  type: obj.geometry?.type || "unknown",
+                  position: obj.position,
+                  visible: obj.visible,
+                  materialName: obj.material?.name || (Array.isArray(obj.material) ? obj.material.map((m) => m?.name).join(",") : "none"),
+                  userData: obj.userData
+                });
+              }
+            });
+            console.log("\uCD1D Mesh \uAC1C\uC218:", allMeshes.length);
+            console.table(allMeshes);
+            const suspiciousMeshes = allMeshes.filter(
+              (m) => m.type === "PlaneGeometry" && m.position.y > 1 && (m.name.toLowerCase().includes("plane") || m.materialName.toLowerCase().includes("hud") || m.materialName.toLowerCase().includes("img"))
+            );
+            console.log("=== \uD640\uB85C\uADF8\uB7A8\uC73C\uB85C \uC758\uC2EC\uB418\uB294 Mesh (Y > 1.0, PlaneGeometry) ===");
+            console.table(suspiciousMeshes);
+            window.debugScene = scene;
+            window.debugLobbyModel = lobbyModel;
+            window.debugRemoveMeshByName = function(name) {
+              let found = false;
+              scene.traverse((obj) => {
+                if (obj.isMesh && obj.name === name) {
+                  obj.visible = false;
+                  if (obj.parent) obj.parent.remove(obj);
+                  if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                      obj.material.forEach((m) => {
+                        if (m && m.dispose) m.dispose();
+                      });
+                    } else {
+                      if (obj.material.dispose) obj.material.dispose();
+                    }
+                  }
+                  if (obj.geometry && obj.geometry.dispose) obj.geometry.dispose();
+                  console.log(`\u2713 \uC81C\uAC70 \uC644\uB8CC: ${name}`);
+                  found = true;
+                }
+              });
+              if (!found) console.log(`\u2717 \uCC3E\uC744 \uC218 \uC5C6\uC74C: ${name}`);
+            };
+            console.log("=== \uB514\uBC84\uAE45 \uD568\uC218 \uC0AC\uC6A9\uBC95 ===");
+            console.log("1. \uC704\uC758 \uD14C\uC774\uBE14\uC5D0\uC11C \uD640\uB85C\uADF8\uB7A8\uC73C\uB85C \uBCF4\uC774\uB294 Mesh\uC758 name\uC744 \uD655\uC778");
+            console.log("2. \uCF58\uC194\uC5D0\uC11C \uB2E4\uC74C \uBA85\uB839\uC5B4 \uC2E4\uD589:");
+            console.log('   debugRemoveMeshByName("Mesh\uC774\uB984")');
+            console.log('\uC608: debugRemoveMeshByName("Plane035_8")');
+            const originalPlane035_8 = [];
+            lobbyModel.traverse((obj) => {
+              if (obj.isMesh && obj.name === "Plane035_8" && !obj.userData.isDesk) {
+                originalPlane035_8.push(obj);
+              }
+            });
+            originalPlane035_8.forEach((obj) => {
+              obj.visible = false;
+              obj.castShadow = false;
+              obj.receiveShadow = false;
+              if (obj.parent) {
+                obj.parent.remove(obj);
+                console.log(`\u2713 \uC6D0\uBCF8 Plane035_8 \uC644\uC804 \uC81C\uAC70: ${obj.name}`);
+              }
+            });
+            if (originalPlane035_8.length === 0) {
+              console.log(`\u2713 \uC6D0\uBCF8 Plane035_8 \uC5C6\uC74C (\uC774\uBBF8 \uC81C\uAC70\uB428)`);
+            }
+            const EXTRA_CLEANUP_PLANES = ["Plane035_8", "Plane040_8", "Plane047_8", "Plane054_8", "Plane061_8"];
+            const foundExtraPlanes = [];
+            lobbyModel.traverse((obj) => {
+              if (obj.isMesh && EXTRA_CLEANUP_PLANES.includes(obj.name) && !obj.userData?.isDesk) {
+                foundExtraPlanes.push(obj);
+              }
+            });
+            foundExtraPlanes.forEach((obj) => {
+              obj.visible = false;
+              obj.castShadow = false;
+              obj.receiveShadow = false;
+              if (obj.parent) {
+                obj.parent.remove(obj);
+                console.log(`\u2713 \uAC15\uC81C \uC81C\uAC70: ${obj.name}`);
+              }
+              if (obj.geometry && obj.geometry.dispose) obj.geometry.dispose();
+              if (obj.material) {
+                if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.());
+                else obj.material.dispose?.();
+              }
+            });
+            if (foundExtraPlanes.length === 0) console.log("\u2713 \uCD94\uAC00 \uC81C\uAC70 \uB300\uC0C1 \uC5C6\uC74C (\uC774\uBBF8 \uCC98\uB9AC\uB428)");
+            try {
+              runPurgesRepeatedly(lobbyModel);
+            } catch (e) {
+              console.warn("runPurgesRepeatedly \uC2E4\uD328:", e);
+            }
+            scene.add(lobbyModel);
+            showGlbVerifyBannerIfRequested();
+          } catch (fullErr) {
+            console.error("[LOBBY] full \uD6C4\uCC98\uB9AC \uC911 \uC624\uB958 \u2014 minimal \uBAA8\uB4DC\uB85C \uD45C\uC2DC\uD569\uB2C8\uB2E4:", fullErr);
+            applyMinimalLobbyPostProcess(lobbyModel);
           }
-        });
-        if (!found) console.log(`\u2717 \uCC3E\uC744 \uC218 \uC5C6\uC74C: ${name}`);
-      };
-      console.log("=== \uB514\uBC84\uAE45 \uD568\uC218 \uC0AC\uC6A9\uBC95 ===");
-      console.log("1. \uC704\uC758 \uD14C\uC774\uBE14\uC5D0\uC11C \uD640\uB85C\uADF8\uB7A8\uC73C\uB85C \uBCF4\uC774\uB294 Mesh\uC758 name\uC744 \uD655\uC778");
-      console.log("2. \uCF58\uC194\uC5D0\uC11C \uB2E4\uC74C \uBA85\uB839\uC5B4 \uC2E4\uD589:");
-      console.log('   debugRemoveMeshByName("Mesh\uC774\uB984")');
-      console.log('\uC608: debugRemoveMeshByName("Plane035_8")');
-      const originalPlane035_8 = [];
-      lobbyModel.traverse((obj) => {
-        if (obj.isMesh && obj.name === "Plane035_8" && !obj.userData.isDesk) {
-          originalPlane035_8.push(obj);
+        })().catch((e) => console.error("[LOBBY] GLB \uB85C\uB4DC \uD6C4 \uBE44\uB3D9\uAE30 \uD30C\uC774\uD504\uB77C\uC778 \uC2E4\uD328:", e));
+      },
+      void 0,
+      (err) => {
+        console.error("GLB \uB85C\uB4DC \uC2E4\uD328:", err);
+        const m = String(err && err.message || err || "");
+        if (/BLENDER/i.test(m)) {
+          lobbyLoadErrorBlendFile();
+        } else {
+          lobbyLoadErrorGeneric();
         }
-      });
-      originalPlane035_8.forEach((obj) => {
-        obj.visible = false;
-        obj.castShadow = false;
-        obj.receiveShadow = false;
-        if (obj.parent) {
-          obj.parent.remove(obj);
-          console.log(`\u2713 \uC6D0\uBCF8 Plane035_8 \uC644\uC804 \uC81C\uAC70: ${obj.name}`);
-        }
-      });
-      if (originalPlane035_8.length === 0) {
-        console.log(`\u2713 \uC6D0\uBCF8 Plane035_8 \uC5C6\uC74C (\uC774\uBBF8 \uC81C\uAC70\uB428)`);
       }
-      const EXTRA_CLEANUP_PLANES = ["Plane035_8", "Plane040_8", "Plane047_8", "Plane054_8", "Plane061_8"];
-      const foundExtraPlanes = [];
-      lobbyModel.traverse((obj) => {
-        if (obj.isMesh && EXTRA_CLEANUP_PLANES.includes(obj.name) && !obj.userData?.isDesk) {
-          foundExtraPlanes.push(obj);
-        }
-      });
-      foundExtraPlanes.forEach((obj) => {
-        obj.visible = false;
-        obj.castShadow = false;
-        obj.receiveShadow = false;
-        if (obj.parent) {
-          obj.parent.remove(obj);
-          console.log(`\u2713 \uAC15\uC81C \uC81C\uAC70: ${obj.name}`);
-        }
-        if (obj.geometry && obj.geometry.dispose) obj.geometry.dispose();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.());
-          else obj.material.dispose?.();
-        }
-      });
-      if (foundExtraPlanes.length === 0) console.log("\u2713 \uCD94\uAC00 \uC81C\uAC70 \uB300\uC0C1 \uC5C6\uC74C (\uC774\uBBF8 \uCC98\uB9AC\uB428)");
-      function runPurgesRepeatedly(model) {
-        try {
-          purgeHologramLikeObjects(model);
-        } catch (e) {
-          console.warn("purgeHologramLikeObjects \uC2E4\uD328:", e);
-        }
-        try {
-          purgeAdditionalPlanes(model);
-        } catch (e) {
-          console.warn("purgeAdditionalPlanes \uC2E4\uD328:", e);
-        }
-        setTimeout(() => {
-          try {
-            purgeHologramLikeObjects(model);
-            purgeAdditionalPlanes(model);
-          } catch (e) {
-          }
-        }, 300);
-        setTimeout(() => {
-          try {
-            purgeHologramLikeObjects(model);
-            purgeAdditionalPlanes(model);
-          } catch (e) {
-          }
-        }, 1e3);
-      }
-      try {
-        runPurgesRepeatedly(lobbyModel);
-      } catch (e) {
-        console.warn("runPurgesRepeatedly \uC2E4\uD328:", e);
-      }
-      scene.add(lobbyModel);
-    },
-    void 0,
-    (err) => console.warn("GLB \uB85C\uB4DC \uC2E4\uD328:", err)
-  );
+    );
+  })().catch((e) => console.error("[LOBBY] \uC2A4\uB2C8\uD504/\uB85C\uB354 \uB798\uD37C \uC2E4\uD328:", e));
   window.addEventListener("resize", onResize);
 }
 function moveToTarget(targetPoint) {
@@ -25531,6 +26237,7 @@ function onCanvasClick(event) {
         label,
         deskId,
         planetIndex: deskMesh.userData.planetIndex,
+        planetPath: deskMesh.userData.planetPath,
         hitPoint
       };
       showDeptPanel(selectedDeskData);
@@ -25584,6 +26291,7 @@ function onCanvasTouch(event) {
         label,
         deskId,
         planetIndex: deskMesh.userData.planetIndex,
+        planetPath: deskMesh.userData.planetPath,
         hitPoint
       };
       showDeptPanel(selectedDeskData);
