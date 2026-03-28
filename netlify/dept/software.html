@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>응용 소프트웨어 개발 | NURION</title>
+  <style>
+  :root{ --accent:#00d28a; --deptGlow:radial-gradient(900px 520px at 85% 15%, rgba(0,210,138,.22), transparent 55%), radial-gradient(700px 420px at 10% 25%, rgba(255,255,255,.08), transparent 55%); }
+  
+:root{
+  --bg0:#070b12;
+  --surface: rgba(255,255,255,.04);
+  --surface2: rgba(255,255,255,.06);
+  --border: rgba(255,255,255,.14);
+  --text: #e8eeff;
+  --muted: rgba(232,238,255,.72);
+  --shadow: 0 18px 50px rgba(0,0,0,.38);
+  --radius: 18px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: "Pretendard","Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg0);
+}
+a{color:inherit; text-decoration:none}
+img{max-width:100%; display:block}
+.wrap{width:min(1120px, calc(100vw - 32px)); margin: 18px auto 72px;}
+.topbar{
+  position: sticky; top: 12px; z-index: 10;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(10,14,23,0.72);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+.brand{display:flex; flex-direction:column; gap:4px}
+.kicker{font-size:12px; letter-spacing:.12em; opacity:.75}
+.title{font-size:16px; font-weight:800}
+.actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.btn{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color:#fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor:pointer;
+}
+.btn.primary{
+  background: color-mix(in srgb, var(--accent) 32%, rgba(255,255,255,.02));
+  border-color: color-mix(in srgb, var(--accent) 65%, rgba(255,255,255,.12));
+}
+.grid{
+  margin-top: 14px;
+  display:grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 12px;
+}
+.hero{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  box-shadow: var(--shadow);
+  overflow:hidden;
+  position:relative;
+}
+.hero:before{
+  content:"";
+  position:absolute; inset:0;
+  background: var(--deptGlow);
+  pointer-events:none;
+}
+.hero h1{margin: 10px 0 10px; font-size: 30px; line-height:1.25; position:relative}
+.hero p{margin:0; opacity:.85; line-height:1.65; position:relative}
+.heroRow{
+  margin-top: 14px;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  position:relative;
+}
+.heroMedia{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  overflow:hidden;
+  background: rgba(0,0,0,.25);
+  aspect-ratio: 16 / 10;
+  position:relative;
+}
+.heroMedia .tag{
+  position:absolute; left:12px; top:12px;
+  display:inline-flex; align-items:center; gap:8px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.28);
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.dot{
+  width:10px; height:10px; border-radius:50%;
+  background: var(--accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.quick{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(255,255,255,.03);
+  box-shadow: var(--shadow);
+}
+.quick h2{margin:0 0 10px; font-size:14px; opacity:.9}
+.quickGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.qItem{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255,255,255,.04);
+  min-height: 92px;
+}
+.qTop{display:flex; align-items:center; gap:10px; margin-bottom:6px}
+.qIcon{font-size:18px}
+.qTitle{font-weight:800; font-size:13px}
+.qDesc{font-size:12px; opacity:.8; line-height:1.45}
+.section{
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: rgba(255,255,255,.03);
+  box-shadow: var(--shadow);
+}
+.section h2{margin:0 0 10px; font-size:16px}
+.cards{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.card{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255,255,255,.04);
+}
+.cardHead{display:flex; align-items:flex-start; gap:10px; margin-bottom:8px}
+.badge{
+  flex:0 0 auto;
+  width:36px; height:36px; border-radius: 12px;
+  display:flex; align-items:center; justify-content:center;
+  background: color-mix(in srgb, var(--accent) 18%, rgba(255,255,255,.02));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, rgba(255,255,255,.12));
+}
+.card h3{margin:0; font-size:15px}
+.card p{margin: 6px 0 10px; opacity:.82; line-height:1.55; font-size:13px}
+.card ul{margin:0 0 0 16px; padding:0; line-height:1.55; opacity:.9}
+.split{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.steps{
+  display:grid;
+  gap: 10px;
+}
+.step{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255,255,255,.04);
+}
+.stepTitle{font-weight:900}
+.stepDesc{opacity:.82; margin-top:6px; line-height:1.55; font-size:13px}
+.faq details{
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.04);
+}
+.faq details + details{margin-top:10px}
+.faq summary{cursor:pointer; font-weight:800}
+.faq p{margin:10px 0 0; opacity:.82; line-height:1.55; font-size:13px}
+.ctaBar{
+  margin-top: 14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.note{
+  display:flex; align-items:center; gap:10px;
+  border: 1px dashed rgba(255,255,255,.22);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(0,0,0,.18);
+  opacity:.9;
+}
+.footer{
+  margin-top: 14px;
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+  opacity: .85;
+  flex-wrap: wrap;
+  align-items:center;
+}
+.pill{
+  display:inline-flex; align-items:center; gap:8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.small{font-size:12px; opacity:.78}
+@media (max-width: 920px){
+  .grid{grid-template-columns: 1fr}
+}
+@media (max-width: 820px){
+  .cards{grid-template-columns:1fr}
+  .split{grid-template-columns:1fr}
+  .hero h1{font-size:26px}
+}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="kicker">DEPARTMENT</div>
+        <div class="title">응용 소프트웨어 개발</div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="../index.html">로비로</a>
+        <a class="btn primary" href="#contact">프로젝트 상담</a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="hero">
+        <div class="pill"><span class="dot"></span><span class="small">부서별 테마 색상으로 구분</span></div>
+        <h1>아이디어를 시스템으로 구현하고, 운영까지 책임집니다.</h1>
+        <p>웹/모바일/업무시스템을 빠르게 만들고 안정적으로 운영</p>
+
+        <div class="heroRow">
+          <div class="heroMedia">
+            <img src="../assets/placeholders/software-hero.jpg" alt="응용 소프트웨어 개발 대표 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
+            <div class="tag"><span class="dot"></span><span>대표 이미지(추후 교체)</span></div>
+          </div>
+
+          <div class="ctaBar">
+            <a class="btn primary" href="#contact">프로젝트 상담</a>
+            <a class="btn" href="#contact">기술 제안 요청</a>
+          </div>
+        </div>
+      </section>
+
+      <aside class="quick">
+        <h2>핵심 제공 가치</h2>
+        <div class="quickGrid">
+          <div class="qItem"><div class="qTop"><div class="qIcon">🧪</div><div class="qTitle">2~4주 MVP</div></div><div class="qDesc">핵심 기능 우선</div></div>
+<div class="qItem"><div class="qTop"><div class="qIcon">⚙</div><div class="qTitle">관리자/대시보드</div></div><div class="qDesc">운영 중심 설계</div></div>
+<div class="qItem"><div class="qTop"><div class="qIcon">🔒</div><div class="qTitle">품질/보안</div></div><div class="qDesc">테스트·취약점</div></div>
+<div class="qItem"><div class="qTop"><div class="qIcon">🌐</div><div class="qTitle">배포/운영</div></div><div class="qDesc">CI/CD·모니터링</div></div>
+        </div>
+        <div style="margin-top:12px" class="note">
+          <span class="dot"></span>
+          <span class="small">지금은 오픈 단계라 템플릿 기반으로 운영합니다. 추후 사업부별 실적/이미지/사례를 채워 완성합니다.</span>
+        </div>
+      </aside>
+    </div>
+
+    <section class="section" id="service">
+      <h2>서비스 구성</h2>
+      <div class="cards">
+        <div class="card">
+  <div class="cardHead">
+    <div class="badge">🧪</div>
+    <div>
+      <h3>MVP/프로토타입</h3>
+      <p>짧은 주기로 검증 가능한 MVP를 만듭니다.</p>
+    </div>
+  </div>
+  <ul><li>요구사항 캔버스</li><li>와이어프레임</li><li>기능 우선순위</li><li>2~4주 MVP</li></ul>
+</div>
+<div class="card">
+  <div class="cardHead">
+    <div class="badge">⚙</div>
+    <div>
+      <h3>시스템 구축</h3>
+      <p>인증/권한/결제/DB/API까지 안정적으로 구축합니다.</p>
+    </div>
+  </div>
+  <ul><li>관리자/대시보드</li><li>결제/인증/권한</li><li>DB 설계</li><li>API 설계</li></ul>
+</div>
+<div class="card">
+  <div class="cardHead">
+    <div class="badge">🔒</div>
+    <div>
+      <h3>품질·보안</h3>
+      <p>테스트·성능·보안을 기본값으로 제공합니다.</p>
+    </div>
+  </div>
+  <ul><li>테스트(단위/통합)</li><li>성능 최적화</li><li>취약점 점검</li><li>로그/모니터링</li></ul>
+</div>
+<div class="card">
+  <div class="cardHead">
+    <div class="badge">🚚</div>
+    <div>
+      <h3>배포·운영</h3>
+      <p>지속 배포와 운영 규칙으로 장애를 줄입니다.</p>
+    </div>
+  </div>
+  <ul><li>CI/CD</li><li>Netlify/Vercel 배포</li><li>장애 대응 룰</li><li>운영 리포트</li></ul>
+</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>진행 흐름</h2>
+      <div class="split">
+        <div class="steps">
+          <div class="step"><div class="stepTitle">1. 정의</div><div class="stepDesc">요구사항·범위·우선순위</div></div>
+<div class="step"><div class="stepTitle">2. 설계</div><div class="stepDesc">화면/DB/API 설계</div></div>
+<div class="step"><div class="stepTitle">3. 개발</div><div class="stepDesc">스프린트 개발·테스트</div></div>
+<div class="step"><div class="stepTitle">4. 배포</div><div class="stepDesc">CI/CD·모니터링·운영</div></div>
+        </div>
+        <div class="heroMedia" style="aspect-ratio: 16/12;">
+          <img src="../assets/placeholders/process.jpg" alt="프로세스 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
+          <div class="tag"><span class="dot"></span><span>프로세스 시각 이미지(추후 교체)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section faq">
+      <h2>자주 묻는 질문</h2>
+      <details><summary>개발 기간/비용은 어떻게 산정하나요?</summary><p>요구사항을 기능 단위로 분해해 범위·우선순위를 정하고 스프린트 기준으로 산정합니다.</p></details>
+<details><summary>운영은 누가 담당하나요?</summary><p>인석이 형 운영 방향에 맞춰 모니터링/장애 대응 룰을 함께 만들고, 필요 시 운영 대행도 가능합니다.</p></details>
+<details><summary>보안/개인정보는요?</summary><p>권한·로그·암호화·취약점 점검을 기본 적용하고, 서비스 특성에 맞게 강화합니다.</p></details>
+    </section>
+
+    <section class="section" id="contact">
+      <h2>문의/상담</h2>
+      <div class="split">
+        <div class="card">
+          <h3>빠른 상담 요청</h3>
+          <p>연락처/요청사항을 남겨주시면 확인 후 연락드립니다. (형이 원하시는 폼/연동으로 교체 가능)</p>
+          <form onsubmit="event.preventDefault(); alert('문의가 접수되었습니다(연동 전 데모).');">
+            <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+              <input required placeholder="성함" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:#fff" />
+              <input required placeholder="연락처" style="padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:#fff" />
+            </div>
+            <input placeholder="이메일(선택)" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:#fff" />
+            <textarea required placeholder="요청 내용" rows="4" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:#fff"></textarea>
+            <div class="ctaBar">
+              <button class="btn primary" type="submit">프로젝트 상담</button>
+              <a class="btn" href="../index.html">로비로 돌아가기</a>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>연락 정보</h3>
+          <p>아래 항목은 운영 정보 확정 후 교체하세요.</p>
+          <ul>
+            <li>담당: 인석이 형</li>
+            <li>운영 파트너: 에테르니언</li>
+            <li>연락: (추후 기재)</li>
+            <li>주소: (추후 기재)</li>
+          </ul>
+          <div class="note" style="margin-top:12px">
+            <span class="dot"></span>
+            <span class="small">이미지는 <code>assets/placeholders/</code>의 파일로 교체하면 됩니다.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span class="pill"><span class="dot"></span><span class="small">응용 소프트웨어 개발 · 색상 테마 적용</span></span>
+      <span class="small">© NURION · Department Pages</span>
+    </footer>
+  </div>
+</body>
+</html>

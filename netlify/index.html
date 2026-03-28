@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NURION 3D 로비</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #0a0e17; font-family: 'Segoe UI', sans-serif; }
+    #intro-container {
+      position: fixed; inset: 0; z-index: 10;
+      background: #000; display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.8s ease;
+    }
+    #intro-container.hidden { opacity: 0; pointer-events: none; }
+    #intro-video {
+      width: 100%; height: 100%; object-fit: contain;
+    }
+    #skip-intro {
+      position: absolute; bottom: 24px; right: 24px; z-index: 11;
+      padding: 10px 20px; background: rgba(0,150,255,0.4); color: #fff;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+      cursor: pointer; font-size: 14px; transition: background 0.2s;
+    }
+    #skip-intro:hover { background: rgba(0,150,255,0.7); }
+    #canvas-container { position: fixed; inset: 0; z-index: 1; cursor: grab; }
+    #canvas-container:active { cursor: grabbing; }
+    #canvas-container canvas { display: block; width: 100%; height: 100%; pointer-events: auto; }
+    .dept-panel{
+      position: fixed; z-index: 20;
+      right: 18px; top: 18px;
+      width: min(360px, calc(100vw - 36px));
+      background: rgba(10,14,23,0.88);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      color: #e8eeff;
+      padding: 14px;
+    }
+    .dept-panel.hidden{ display:none; }
+    .dept-panel__header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .dept-panel__title{ font-size: 16px; font-weight: 700; }
+    .dept-panel__close{
+      padding: 6px 10px; border-radius: 10px; cursor:pointer;
+      background: rgba(0,150,255,0.22); color:#fff;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .dept-panel__body{ margin-top:10px; font-size: 13px; line-height: 1.45; opacity: 0.95; }
+    .dept-panel__actions{ margin-top:12px; display:flex; justify-content:flex-end; }
+    #dept-action{
+      padding: 10px 12px; border-radius: 12px; cursor:pointer;
+      background: rgba(0,150,255,0.35); color:#fff;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    /* ===== Desk Modal + Dept Panels ===== */
+    #deskModal{
+      position: fixed; inset: 0; z-index: 50;
+      display: none; align-items: center; justify-content: center;
+    }
+    #deskModal.open{ display:flex; }
+    #deskModal .backdrop{
+      position:absolute; inset:0; background: rgba(0,0,0,0.55);
+    }
+    /* 모바일: 인트로 후 2.5D 로비 영상 + 사업부 버튼(PC는 미사용) */
+    #mobile-lobby-25d {
+      position: fixed; inset: 0; z-index: 5;
+      display: flex; flex-direction: column;
+      background: #0a0e17;
+    }
+    #mobile-lobby-25d.hidden { display: none !important; }
+    #mobile-lobby-25d #lobby-25d-video {
+      flex: 1; min-height: 0; width: 100%; object-fit: cover;
+    }
+    .mobile-lobby-25d__ui {
+      flex-shrink: 0;
+      padding: 12px 14px 20px;
+      background: linear-gradient(180deg, transparent, rgba(10,14,23,0.96));
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .mobile-lobby-25d__hint {
+      font-size: 12px; opacity: 0.75; margin-bottom: 10px; letter-spacing: 0.06em;
+      color: #a8b4d6;
+    }
+    #mobile-lobby-buttons {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center;
+    }
+    .mobile-lobby__btn {
+      padding: 10px 12px; border-radius: 12px; cursor: pointer;
+      font-size: 13px; color: #e8eeff;
+      background: rgba(0,150,255,0.28);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .mobile-lobby__btn:active { background: rgba(0,150,255,0.45); }
+    #deskModal .panel{
+      position: relative;
+      width: min(760px, calc(100vw - 28px));
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(10,14,23,0.88);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    #deskModal .head{ padding: 18px 18px 10px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+    #deskModal .kicker{ font-size: 12px; opacity: 0.75; letter-spacing: .12em; }
+    #deskModal .title{ font-size: 22px; margin-top: 6px; }
+    #deskModal .sub{ font-size: 13px; opacity: .78; margin-top: 6px; line-height: 1.5; }
+    #deskModal .body{ padding: 14px 18px; }
+    #deskModal .grid{
+      display:grid; grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 12px;
+    }
+    #deskModal .card{
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+    #deskModal .card b{ display:block; margin-bottom: 6px; }
+    #deskModal .foot{
+      padding: 14px 18px;
+      display:flex; gap:10px; justify-content:flex-end;
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+    .btn{
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .btn:hover{ background: rgba(255,255,255,0.12); }
+    .btn.primary{
+      background: rgba(0,150,255,0.35);
+      border-color: rgba(0,150,255,0.55);
+    }
+    .btn.ghost{
+      background: transparent;
+    }
+
+    #deptRoot{
+      position: fixed; inset:0; z-index: 40;
+      display:none;
+    }
+    #deptRoot.open{ display:block; }
+    .deptPage{
+      position:absolute; inset:0;
+      display:none;
+      background: rgba(8,10,16,0.92);
+      backdrop-filter: blur(8px);
+      color:#fff;
+      overflow:auto;
+    }
+    .deptPage.active{ display:block; }
+    .deptTopbar{
+      position: sticky; top:0; z-index: 2;
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8,10,16,0.78);
+      backdrop-filter: blur(8px);
+    }
+    .deptWrap{
+      width: min(1080px, calc(100vw - 28px));
+      margin: 18px auto 40px;
+    }
+    .deptHero{
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255,255,255,0.04);
+    }
+    .deptHero h1{ font-size: 26px; margin: 6px 0 10px; }
+    .deptHero p{ opacity: .82; line-height: 1.6; }
+    .deptBlocks{
+      margin-top: 14px;
+      display:grid; grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 12px;
+    }
+    .deptBlocks .block{
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255,255,255,0.04);
+    }
+    .deptBlocks .block h3{ margin-bottom: 8px; }
+    .deptBlocks .block ul{ margin-left: 16px; opacity:.88; line-height: 1.55; }
+    @media (max-width: 760px){
+      #deskModal .grid, .deptBlocks{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="intro-container">
+    <video id="intro-video" muted playsinline autoplay preload="auto"></video>
+    <button id="skip-intro" type="button">건너뛰기</button>
+  </div>
+
+  <script>
+    // PC·모바일 동일 진입 영상(assets/intro.mp4) — 분기는 인트로 이후 bundle.js
+    (function(){
+      try {
+        var v = document.getElementById('intro-video');
+        if (!v) return;
+        v.src = 'assets/intro.mp4';
+        v.preload = 'auto';
+        v.muted = true;
+        v.playsInline = true;
+        v.setAttribute('playsinline','');
+        v.setAttribute('muted','');
+        try {
+          v.load();
+          v.play().catch(function(e){ console.warn('intro video initial play attempt failed:', e); });
+        } catch (e) { console.warn('intro play setup error', e); }
+      } catch (e) { console.warn('intro selection error', e); }
+    })();
+  </script>
+  <div id="canvas-container"></div>
+
+  <div id="mobile-lobby-25d" class="mobile-lobby-25d hidden" aria-hidden="true">
+    <video id="lobby-25d-video" muted playsinline loop preload="auto"></video>
+    <div class="mobile-lobby-25d__ui">
+      <p class="mobile-lobby-25d__hint">사업부 선택 (PC의 데스크 → 입장하기와 동일)</p>
+      <div id="mobile-lobby-buttons"></div>
+    </div>
+  </div>
+
+  <div id="desk-tooltip" style="
+    position: fixed; z-index: 60;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(10,14,23,0.82);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #e8eeff;
+    font-size: 12px;
+    pointer-events: none;
+    transform: translate(-50%, -120%);
+    display: none;
+    backdrop-filter: blur(10px);
+  "}></div>
+
+  <!-- ===== Desk Info Modal (Planet modal 역할) ===== -->
+  <div id="deskModal" aria-hidden="true">
+    <div class="backdrop" data-dm-close="1"></div>
+    <div class="panel" role="dialog" aria-modal="true" aria-label="사업부 안내">
+      <div class="head">
+        <div class="kicker" id="dmKicker">NURION</div>
+        <div class="title" id="dmTitle">사업부</div>
+        <div class="sub" id="dmSub">설명</div>
+      </div>
+      <div class="body">
+        <div class="grid" id="dmBody"></div>
+      </div>
+      <div class="foot">
+        <button class="btn ghost" type="button" data-dm-close="1">닫기</button>
+        <button class="btn primary" type="button" id="dmEnter">입장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Dept Pages ===== -->
+  <div id="deptRoot" aria-hidden="true">
+    <section class="deptPage" id="dept-consulting" data-dept="consulting" aria-hidden="true"></section>
+    <section class="deptPage" id="dept-news" data-dept="news" aria-hidden="true"></section>
+    <section class="deptPage" id="dept-edocs" data-dept="edocs" aria-hidden="true"></section>
+    <section class="deptPage" id="dept-software" data-dept="software" aria-hidden="true"></section>
+    <section class="deptPage" id="dept-smartcity" data-dept="smartcity" aria-hidden="true"></section>
+  </div>
+
+  <div id="dept-panel" class="dept-panel hidden">
+    <div class="dept-panel__header">
+      <div id="dept-title" class="dept-panel__title">사업부</div>
+      <button id="dept-close" class="dept-panel__close" type="button">닫기</button>
+    </div>
+    <div id="dept-body" class="dept-panel__body"></div>
+    <div class="dept-panel__actions">
+      <button id="dept-action" type="button">자세히 보기</button>
+    </div>
+  </div>
+  <script>
+    // Ensure __clearAutoHome exists before any bundled script calls it.
+    if (typeof window !== 'undefined' && typeof window.__clearAutoHome !== 'function') {
+      window.__clearAutoHome = function() { /* no-op for compatibility */ };
+    }
+  </script>
+  <script type="module" src="bundle.js"></script>
+</body>
+</html>

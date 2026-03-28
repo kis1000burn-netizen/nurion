@@ -1,0 +1,17 @@
+# Netlify: https://docs.netlify.com/configure-builds/file-based-configuration/
+# 저장소: https://github.com/kis1000burn-netizen/nurion
+#
+# Netlify 대시보드: Base directory = 비움(저장소 루트). 여기만 쓰면 publish = netlify 가 적용됩니다.
+
+[build]
+  command = "npm ci && npm run build:netlify"
+  publish = "netlify"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 클라이언트 라우팅: 모든 경로를 index.html 로 (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,19 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# 백업·아카이브(배포 불필요)
+*.zip
+*.bak
+*.blend1
+오류일지.md
+
+# Netlify 빌드 맵(선택)
+netlify/bundle.js.map
+
+# 중복 배포 폴더( netlify/ 가 단일 소스 )
+netlify_deploy/
+
+# 재다운로드 원본(루트 OBJ 등은 필요 시 별도 추가)
+down_again/
