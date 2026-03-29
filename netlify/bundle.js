@@ -24840,14 +24840,42 @@ function effectiveLobbyProcessing() {
   }
   return LOBBY_PROCESSING;
 }
+function isMobileDevice() {
+  try {
+    const q = location.search || "";
+    if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return false;
+    if (/[?&](?:forceMobile|mobileLobby)=1(?:&|$)/i.test(q)) return true;
+    const ua = navigator.userAgent || "";
+    if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile\/|Silk|wv\)|SamsungBrowser/i.test(ua) || /iPad|Android(?!.*Mobile)/i.test(ua)) {
+      return true;
+    }
+    if (typeof window.matchMedia === "function") {
+      try {
+        if (window.matchMedia("(max-width: 900px)").matches && window.matchMedia("(pointer: coarse)").matches) {
+          return true;
+        }
+      } catch (_) {
+      }
+    }
+    try {
+      if (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0 && window.innerWidth < 900) {
+        return true;
+      }
+    } catch (_) {
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
 function useMobileLobbyPath() {
   try {
     const q = location.search || "";
-    if (/[?&](?:desktop|force3d)=1(?:&|$)/i.test(q)) return false;
+    if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return false;
     if (/[?&]mobileLobby=1(?:&|$)/i.test(q)) return true;
   } catch (_) {
   }
-  return false;
+  return isMobileDevice();
 }
 var DESK_LABELS = [
   // 1. Plane035
@@ -25448,6 +25476,16 @@ function enterMainAfterIntro() {
     });
   }
 }
+function mobileLobbyHtmlPath() {
+  try {
+    const m = document.querySelector('meta[name="lobby-asset-base"]');
+    const c = m && m.getAttribute("content") || "";
+    if (!c || c === "auto") return "mobile-lobby.html";
+    if (/netlify/i.test(c)) return "netlify/mobile-lobby.html";
+  } catch (_) {
+  }
+  return "mobile-lobby.html";
+}
 function initIntro() {
   const container = document.getElementById("intro-container");
   const video = document.getElementById("intro-video");
@@ -25525,7 +25563,19 @@ function initIntro() {
       const stalled = video.currentTime <= 0.05 || video.currentTime <= lastTime + 0.01;
       if (stalled) showLobby();
     }
-  }, 2500);
+  }, isMobileDevice() ? 5e3 : 2500);
+  try {
+    const q = location.search || "";
+    if (/[?&]lobby=1(?:&|$)/i.test(q)) {
+      if (useMobileLobbyPath()) {
+        location.replace(mobileLobbyHtmlPath() + q);
+        return;
+      }
+      showLobby();
+      return;
+    }
+  } catch (_) {
+  }
   applyIntroSrc();
   try {
     window.addEventListener("orientationchange", applyIntroSrc);
@@ -25862,6 +25912,16 @@ function findPlanetClickSlotFromObject(obj) {
     const wi = MONITOR_WALL_CUBE_MESH_NAMES.findIndex((x) => x.trim().toLowerCase() === key);
     if (wi >= 0) return wi + 1;
     cur2 = cur2.parent;
+  }
+  return null;
+}
+function findDeskSlotFromPlaneMesh(obj) {
+  let cur = obj;
+  while (cur) {
+    const key = normalizePlaneName(cur.name || "");
+    const idx = DESK_LABELS.findIndex((d) => normalizePlaneName(d.name) === key);
+    if (idx >= 0) return idx + 1;
+    cur = cur.parent;
   }
   return null;
 }
@@ -26406,7 +26466,7 @@ function initThree() {
   }
   if (window.__isMobile) {
     console.warn(
-      "[LOBBY] ?mobileLobby=1 \uBD84\uAE30 \u2014 WebGL\xB7\uB370\uC2A4\uD06C \uD6C4\uCC98\uB9AC \uC0DD\uB7B5. \uC77C\uBC18 PC 3D \uB294 \uC774 \uBD84\uAE30\uAC00 false \uC5EC\uC57C \uD569\uB2C8\uB2E4."
+      "[LOBBY] \uBAA8\uBC14\uC77C UA \uB610\uB294 ?mobileLobby=1 \u2014 WebGL \uC0DD\uB7B5. \uC77C\uBC18 PC\uB294 index head \uC5D0\uC11C mobile-lobby.html \uB85C \uBD84\uB9AC\uB429\uB2C8\uB2E4."
     );
     return;
   }
@@ -26962,6 +27022,11 @@ function onCanvasClick(event) {
         openDeptForPlanetSlot(slot, h.point?.clone?.() || null);
         return;
       }
+      const slotPlane = findDeskSlotFromPlaneMesh(h.object);
+      if (slotPlane) {
+        openDeptForPlanetSlot(slotPlane, h.point?.clone?.() || null);
+        return;
+      }
       const d = findDeskFromObject(h.object);
       if (d) {
         deskMesh = d;
@@ -26971,7 +27036,7 @@ function onCanvasClick(event) {
     }
     if (deskMesh) {
       const deskId = deskMesh.userData.deskId || deskMesh.userData.deskName || normalizePlaneName(deskMesh.name) || deskMesh.name;
-      const mapped = DESK_LINKS[deskId];
+      const mapped = DESK_LINKS[deskId] || DESK_LINKS[normalizePlaneName(String(deskId))];
       if (mapped) {
         window.location.href = mapped;
         return;
@@ -27021,6 +27086,11 @@ function onCanvasTouch(event) {
         openDeptForPlanetSlot(slot, h.point?.clone?.() || null);
         return;
       }
+      const slotPlane = findDeskSlotFromPlaneMesh(h.object);
+      if (slotPlane) {
+        openDeptForPlanetSlot(slotPlane, h.point?.clone?.() || null);
+        return;
+      }
       const d = findDeskFromObject(h.object);
       if (d) {
         deskMesh = d;
@@ -27030,7 +27100,7 @@ function onCanvasTouch(event) {
     }
     if (deskMesh) {
       const deskId = deskMesh.userData.deskId || deskMesh.userData.deskName || normalizePlaneName(deskMesh.name) || deskMesh.name;
-      const mapped = DESK_LINKS[deskId];
+      const mapped = DESK_LINKS[deskId] || DESK_LINKS[normalizePlaneName(String(deskId))];
       if (mapped) {
         window.location.href = mapped;
         return;

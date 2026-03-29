@@ -112,17 +112,47 @@ function effectiveLobbyProcessing() {
 }
 
 /**
- * 모바일 전용(2.5D 로비만, WebGL 생략) 경로. true 이면 initThree 가 return · 인트로 후 캔버스 숨김.
- * ⚠ 이전: UA(Mobi 등)로 판단 → PC 에서도 true 가 되어 3D 코드가 안 돌거나, 인트로 후 캔버스가 숨겨짐.
- * 기본값 false — UA 로는 판단하지 않음. 2.5D 만 쓰려면 URL 에 ?mobileLobby=1
+ * index.html 이 모바일에서 로드된 경우(리다이렉트 우회 등)에만 의미 있음.
+ * 일반 모바일은 head 에서 mobile-lobby.html 로 보내므로 여기까지 오지 않음.
+ * true: WebGL 생략 · 인트로 후 #mobile-lobby-25d(2.5D) 분기 — ?mobileLobby=1 로 PC에서 테스트 시에만 사용 권장.
  */
+function isMobileDevice() {
+  try {
+    const q = location.search || "";
+    if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return false;
+    if (/[?&](?:forceMobile|mobileLobby)=1(?:&|$)/i.test(q)) return true;
+    const ua = navigator.userAgent || "";
+    if (
+      /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile\/|Silk|wv\)|SamsungBrowser/i.test(ua) ||
+      /iPad|Android(?!.*Mobile)/i.test(ua)
+    ) {
+      return true;
+    }
+    if (typeof window.matchMedia === "function") {
+      try {
+        if (window.matchMedia("(max-width: 900px)").matches && window.matchMedia("(pointer: coarse)").matches) {
+          return true;
+        }
+      } catch (_) {}
+    }
+    try {
+      if (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0 && window.innerWidth < 900) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 function useMobileLobbyPath() {
   try {
     const q = location.search || "";
-    if (/[?&](?:desktop|force3d)=1(?:&|$)/i.test(q)) return false;
+    if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return false;
     if (/[?&]mobileLobby=1(?:&|$)/i.test(q)) return true;
   } catch (_) {}
-  return false;
+  return isMobileDevice();
 }
 
 // 5개 모니터별 행성 텍스처 — planetTexture 만 바꾸면 됨 (full 모드 + 데스크 치환 시)
@@ -772,6 +802,17 @@ function enterMainAfterIntro() {
   }
 }
 
+/** index.html 이 루트(netlify/) 또는 저장소 루트에서 열렸는지에 따라 모바일 로비 HTML 경로 */
+function mobileLobbyHtmlPath() {
+  try {
+    const m = document.querySelector('meta[name="lobby-asset-base"]');
+    const c = (m && m.getAttribute("content")) || "";
+    if (!c || c === "auto") return "mobile-lobby.html";
+    if (/netlify/i.test(c)) return "netlify/mobile-lobby.html";
+  } catch (_) {}
+  return "mobile-lobby.html";
+}
+
 function initIntro() {
   const container = document.getElementById('intro-container');
   const video = document.getElementById('intro-video');
@@ -847,7 +888,20 @@ function initIntro() {
       const stalled = video.currentTime <= 0.05 || video.currentTime <= lastTime + 0.01;
       if (stalled) showLobby();
     }
-  }, 2500);
+  }, isMobileDevice() ? 5000 : 2500);
+
+  /** 사업부 상세의 "로비로" 링크(?lobby=1): PC는 인트로 생략 후 3D. 모바일은 PNG 로비(mobile-lobby.html)로 이동 */
+  try {
+    const q = location.search || "";
+    if (/[?&]lobby=1(?:&|$)/i.test(q)) {
+      if (useMobileLobbyPath()) {
+        location.replace(mobileLobbyHtmlPath() + q);
+        return;
+      }
+      showLobby();
+      return;
+    }
+  } catch (_) {}
 
   applyIntroSrc();
   try {
@@ -1361,6 +1415,21 @@ function findPlanetClickSlotFromObject(obj) {
     const wi = MONITOR_WALL_CUBE_MESH_NAMES.findIndex((x) => x.trim().toLowerCase() === key);
     if (wi >= 0) return wi + 1;
     cur2 = cur2.parent;
+  }
+  return null;
+}
+
+/**
+ * minimal 모드(데스크 행성 치환 없음)에서도 동작: 조상 이름이 Plane035 / Plane035_8 등이면 DESK_LABELS 와 매칭.
+ * full 모드에서 monitor_planet·isDesk 가 없을 때도 동일.
+ */
+function findDeskSlotFromPlaneMesh(obj) {
+  let cur = obj;
+  while (cur) {
+    const key = normalizePlaneName(cur.name || "");
+    const idx = DESK_LABELS.findIndex((d) => normalizePlaneName(d.name) === key);
+    if (idx >= 0) return idx + 1;
+    cur = cur.parent;
   }
   return null;
 }
@@ -2107,7 +2176,7 @@ function initThree() {
   }
   if (window.__isMobile) {
     console.warn(
-      "[LOBBY] ?mobileLobby=1 분기 — WebGL·데스크 후처리 생략. 일반 PC 3D 는 이 분기가 false 여야 합니다."
+      "[LOBBY] 모바일 UA 또는 ?mobileLobby=1 — WebGL 생략. 일반 PC는 index head 에서 mobile-lobby.html 로 분리됩니다."
     );
     return;
   }
@@ -2723,6 +2792,11 @@ function onCanvasClick(event) {
         openDeptForPlanetSlot(slot, h.point?.clone?.() || null);
         return;
       }
+      const slotPlane = findDeskSlotFromPlaneMesh(h.object);
+      if (slotPlane) {
+        openDeptForPlanetSlot(slotPlane, h.point?.clone?.() || null);
+        return;
+      }
       const d = findDeskFromObject(h.object);
       if (d) {
         deskMesh = d;
@@ -2732,8 +2806,12 @@ function onCanvasClick(event) {
     }
 
     if (deskMesh) {
-      const deskId = deskMesh.userData.deskId || deskMesh.userData.deskName || normalizePlaneName(deskMesh.name) || deskMesh.name;
-      const mapped = DESK_LINKS[deskId];
+      const deskId =
+        deskMesh.userData.deskId ||
+        deskMesh.userData.deskName ||
+        normalizePlaneName(deskMesh.name) ||
+        deskMesh.name;
+      const mapped = DESK_LINKS[deskId] || DESK_LINKS[normalizePlaneName(String(deskId))];
       if (mapped) {
         window.location.href = mapped;
         return;
@@ -2799,6 +2877,11 @@ function onCanvasTouch(event) {
         openDeptForPlanetSlot(slot, h.point?.clone?.() || null);
         return;
       }
+      const slotPlane = findDeskSlotFromPlaneMesh(h.object);
+      if (slotPlane) {
+        openDeptForPlanetSlot(slotPlane, h.point?.clone?.() || null);
+        return;
+      }
       const d = findDeskFromObject(h.object);
       if (d) {
         deskMesh = d;
@@ -2808,8 +2891,12 @@ function onCanvasTouch(event) {
     }
 
     if (deskMesh) {
-      const deskId = deskMesh.userData.deskId || deskMesh.userData.deskName || normalizePlaneName(deskMesh.name) || deskMesh.name;
-      const mapped = DESK_LINKS[deskId];
+      const deskId =
+        deskMesh.userData.deskId ||
+        deskMesh.userData.deskName ||
+        normalizePlaneName(deskMesh.name) ||
+        deskMesh.name;
+      const mapped = DESK_LINKS[deskId] || DESK_LINKS[normalizePlaneName(String(deskId))];
       if (mapped) {
         window.location.href = mapped;
         return;

@@ -2,6 +2,30 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <!-- 모바일 전용. PC 브라우저는 3D 로비(index.html)로 보냄. ?forceMobile=1 로 PC에서도 이 페이지 유지 -->
+  <script>
+(function () {
+  var q = location.search || "";
+  if (/[?&](?:forceMobile|mobileLobby)=1(?:&|$)/i.test(q)) return;
+  if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return;
+  function isMobileLobbyClient() {
+    var ua = navigator.userAgent || "";
+    if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile\/|Silk|wv\)|SamsungBrowser/i.test(ua)) return true;
+    if (/iPad|Android(?!.*Mobile)/i.test(ua)) return true;
+    try {
+      if (typeof matchMedia === "function" && matchMedia("(max-width: 900px)").matches && matchMedia("(pointer: coarse)").matches) return true;
+    } catch (e) {}
+    try {
+      if (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0 && window.innerWidth < 900) return true;
+    } catch (e) {}
+    return false;
+  }
+  if (isMobileLobbyClient()) return;
+  var dest = "index.html";
+  if (q) dest += q;
+  location.replace(dest);
+})();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>누리온홀딩스 모바일 로비</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -99,6 +123,22 @@
       top: 48.31%;
       width: 15.62%;
       height: 14.84%;
+    }
+
+    /* 주피터 행성(기업컨설팅) — 공통 청록 핫스팟 대신 앰버 톤 */
+    .hotspot.btn-consulting {
+      background: rgba(255, 180, 100, 0.04);
+      border: 1px solid rgba(255, 200, 140, 0.12);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 0 18px rgba(200, 140, 60, 0.12);
+    }
+    .hotspot.btn-consulting:hover,
+    .hotspot.btn-consulting:active {
+      background: rgba(255, 180, 100, 0.09);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+        0 0 24px rgba(220, 150, 80, 0.2);
     }
 
     .btn-news {
@@ -215,18 +255,22 @@
       skipIntro.classList.add('hidden');
     }
 
-    introVideo.addEventListener('ended', showLobby);
-    introVideo.addEventListener('error', showLobby);
-    skipIntro.addEventListener('click', showLobby);
+    if (/[?&]lobby=1(?:&|$)/i.test(location.search || '')) {
+      showLobby();
+    } else {
+      introVideo.addEventListener('ended', showLobby);
+      introVideo.addEventListener('error', showLobby);
+      skipIntro.addEventListener('click', showLobby);
 
-    window.addEventListener('load', () => {
-      const playAttempt = introVideo.play();
-      if (playAttempt && typeof playAttempt.catch === 'function') {
-        playAttempt.catch(() => {
-          showLobby();
-        });
-      }
-    });
+      window.addEventListener('load', () => {
+        const playAttempt = introVideo.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(() => {
+            showLobby();
+          });
+        }
+      });
+    }
   </script>
 </body>
 </html>

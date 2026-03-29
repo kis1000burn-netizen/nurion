@@ -2,6 +2,29 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <!-- PC: 3D 로비(bundle). 모바일: 즉시 mobile-lobby.html(진입영상→PNG→사업부 HTML)로 분리. ?force3d=1 로 모바일에서도 3D 테스트 가능 -->
+  <script>
+(function () {
+  var q = location.search || "";
+  if (/[?&](?:force3d|desktop|pc)=1(?:&|$)/i.test(q)) return;
+  function isMobileLobbyClient() {
+    var ua = navigator.userAgent || "";
+    if (/Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile\/|Silk|wv\)|SamsungBrowser/i.test(ua)) return true;
+    if (/iPad|Android(?!.*Mobile)/i.test(ua)) return true;
+    try {
+      if (typeof matchMedia === "function" && matchMedia("(max-width: 900px)").matches && matchMedia("(pointer: coarse)").matches) return true;
+    } catch (e) {}
+    try {
+      if (typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 0 && window.innerWidth < 900) return true;
+    } catch (e) {}
+    return false;
+  }
+  if (!isMobileLobbyClient()) return;
+  var dest = "mobile-lobby.html";
+  if (q) dest += q;
+  location.replace(dest);
+})();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Netlify 배포 시 사이트 루트가 netlify 폴더이면 자동(bundle.js 위치)으로 충분. 로컬에서 이 파일만 볼 때 루트와 맞추려면 content="auto" -->
   <meta name="lobby-asset-base" content="auto">
@@ -273,6 +296,6 @@
     }
   </script>
   <!-- 로비: 아래 ?v= 는 프로젝트 루트 index.html 의 netlify/bundle.js?v= 와 동일하게 -->
-  <script type="module" src="bundle.js?v=20260329z9"></script>
+  <script type="module" src="bundle.js?v=20260329z10"></script>
 </body>
 </html>

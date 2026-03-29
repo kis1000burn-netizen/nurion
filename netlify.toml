@@ -10,11 +10,8 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# 클라이언트 라우팅: 모든 경로를 index.html 로 (SPA)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# 정적 다중 페이지(index, mobile-lobby, dept/*.html)만 사용. SPA식 /* → index.html 리라이트는
+# mobile-lobby.html 요청까지 index(3D 번들)로 덮어쓰는 사고를 유발하므로 두지 않음.
 
 # GLB 교체 후에도 CDN/브라우저가 옛 URL을 오래 붙잡지 않도록 (?v= 와 함께 사용)
 [[headers]]

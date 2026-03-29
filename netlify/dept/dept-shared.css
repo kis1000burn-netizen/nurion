@@ -5,10 +5,12 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 @import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&display=swap");
 
+/* 로비 행성 텍스처 jupiter.png(주피터 밴드)와 톤 맞춤 — 청록 대신 앰버·골드·갈색 */
 html[data-dept="consulting"] {
-  --accent: #00b3ff;
-  --deptGlow: radial-gradient(900px 520px at 85% 15%, rgba(0, 179, 255, 0.22), transparent 55%),
-    radial-gradient(700px 420px at 10% 25%, rgba(255, 255, 255, 0.08), transparent 55%);
+  --accent: #d4a05c;
+  --deptGlow: radial-gradient(900px 520px at 85% 15%, rgba(212, 160, 92, 0.24), transparent 55%),
+    radial-gradient(700px 420px at 10% 25%, rgba(139, 95, 55, 0.14), transparent 55%),
+    radial-gradient(500px 400px at 50% 80%, rgba(180, 120, 70, 0.09), transparent 60%);
 }
 html[data-dept="news"] {
   --accent: #ff6a00;
@@ -240,4 +242,17 @@ html[data-dept] .btn.primary {
   html[data-dept] .actions .btn {
     text-align: center;
   }
+}
+
+/* 본문 연락처·이메일·도메인 — 바로 탭/클릭 가능 */
+html[data-dept] a.contact-link {
+  color: color-mix(in srgb, var(--accent) 72%, #f2f6ff);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  word-break: break-all;
+}
+
+html[data-dept] a.contact-link:hover {
+  filter: brightness(1.09);
 }

@@ -292,7 +292,7 @@ img{max-width:100%; display:block}
   inset:auto -40px -40px auto;
   width:120px;
   height:120px;
-  background:radial-gradient(circle, rgba(0,179,255,.18), transparent 65%);
+  background:radial-gradient(circle, color-mix(in srgb, var(--accent) 24%, transparent), transparent 65%);
   pointer-events:none;
 }
 .caseType{
@@ -388,7 +388,7 @@ img{max-width:100%; display:block}
         <div class="title">기업컨설팅</div>
       </div>
       <div class="actions">
-        <a class="btn" href="../index.html">로비로</a>
+        <a class="btn" href="../index.html?lobby=1">로비로</a>
         <a class="btn" href="resources.html">자료실</a>
         <a class="btn primary" href="#contact">무료 1차 전략 진단</a>
       </div>
@@ -687,7 +687,7 @@ img{max-width:100%; display:block}
             <textarea required placeholder="회사명 / 현재 상황 / 상담 요청 내용" rows="4" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:#fff"></textarea>
             <div class="ctaBar">
               <button class="btn primary" type="submit">무료 1차 전략 진단</button>
-              <a class="btn" href="../index.html">로비로 돌아가기</a>
+              <a class="btn" href="../index.html?lobby=1">로비로 돌아가기</a>
             </div>
           </form>
         </div>
@@ -700,8 +700,8 @@ img{max-width:100%; display:block}
             <li>대표이사: 최인석</li>
             <li>사업자등록번호: 702-86-03510</li>
             <li>운영 파트너: 에테르니언</li>
-            <li>연락처: 010-5945-5925</li>
-            <li>이메일: aibrew@naver.com</li>
+            <li>연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a></li>
+            <li>이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></li>
             <li>주소: 세종특별자치시 집현중앙7로 6</li>
           </ul>
           <div class="note" style="margin-top:12px">
@@ -720,7 +720,7 @@ img{max-width:100%; display:block}
       <span class="small">상호명: 주식회사 누리온홀딩스</span>
       <span class="small">대표이사: 최인석</span>
       <span class="small">사업자등록번호: 702-86-03510</span>
-      <span class="small">연락처: 010-5945-5925 · 이메일: aibrew@naver.com</span>
+      <span class="small">연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a> · 이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></span>
       <span class="small">주소: 세종특별자치시 집현중앙7로 6</span>
       <span class="small">© NURION HOLDINGS. All rights reserved.</span>
     </footer>

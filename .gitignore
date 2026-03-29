@@ -17,3 +17,8 @@ netlify_deploy/
 
 # 재다운로드 원본(루트 OBJ 등은 필요 시 별도 추가)
 down_again/
+
+# 루트에 남기기 쉬운 레거시·중복 산출물(단일 소스는 netlify/)
+/bundle.js
+/bundle.auto-home.js
+/app.js.bak
