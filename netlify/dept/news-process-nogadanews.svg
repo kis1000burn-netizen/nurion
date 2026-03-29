@@ -7,31 +7,31 @@
     </linearGradient>
   </defs>
   <rect width="800" height="600" fill="url(#pb)"/>
-  <text x="400" y="44" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="17" font-weight="800">노가다뉴스 운영 흐름</text>
+  <text x="400" y="46" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="20" font-weight="800">노가다뉴스 운영 흐름</text>
   <g stroke="rgba(255,106,0,.4)" stroke-width="2" fill="none">
     <path d="M100 320 C220 320 220 120 400 120 C580 120 580 320 700 320"/>
     <path d="M100 320 C220 320 220 520 400 520 C580 520 580 320 700 320"/>
   </g>
   <g>
     <circle cx="100" cy="320" r="42" fill="rgba(255,106,0,.22)" stroke="#ff6a00"/>
-    <text x="100" y="328" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="14" font-weight="800">1</text>
-    <text x="100" y="390" text-anchor="middle" fill="rgba(232,238,255,.72)" font-family="system-ui,sans-serif" font-size="12">기획</text>
+    <text x="100" y="328" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="16" font-weight="800">1</text>
+    <text x="100" y="392" text-anchor="middle" fill="rgba(232,238,255,.82)" font-family="system-ui,sans-serif" font-size="14">기획</text>
   </g>
   <g>
     <circle cx="400" cy="120" r="42" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.22)"/>
-    <text x="400" y="128" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="14" font-weight="800">2</text>
-    <text x="400" y="190" text-anchor="middle" fill="rgba(232,238,255,.72)" font-family="system-ui,sans-serif" font-size="12">제작</text>
+    <text x="400" y="128" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="16" font-weight="800">2</text>
+    <text x="400" y="192" text-anchor="middle" fill="rgba(232,238,255,.82)" font-family="system-ui,sans-serif" font-size="14">제작</text>
   </g>
   <g>
     <circle cx="700" cy="320" r="42" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.22)"/>
-    <text x="700" y="328" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="14" font-weight="800">3</text>
-    <text x="700" y="390" text-anchor="middle" fill="rgba(232,238,255,.72)" font-family="system-ui,sans-serif" font-size="12">발행·확산</text>
+    <text x="700" y="328" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="16" font-weight="800">3</text>
+    <text x="700" y="392" text-anchor="middle" fill="rgba(232,238,255,.82)" font-family="system-ui,sans-serif" font-size="14">발행·확산</text>
   </g>
   <g>
     <circle cx="400" cy="520" r="42" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.22)"/>
-    <text x="400" y="528" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="14" font-weight="800">4</text>
-    <text x="400" y="575" text-anchor="middle" fill="rgba(232,238,255,.72)" font-family="system-ui,sans-serif" font-size="12">광고·제휴</text>
+    <text x="400" y="528" text-anchor="middle" fill="#e8eeff" font-family="system-ui,sans-serif" font-size="16" font-weight="800">4</text>
+    <text x="400" y="578" text-anchor="middle" fill="rgba(232,238,255,.82)" font-family="system-ui,sans-serif" font-size="14">광고·제휴</text>
   </g>
   <rect x="260" y="288" width="280" height="64" rx="12" fill="rgba(255,106,0,.14)" stroke="rgba(255,106,0,.4)"/>
-  <text x="400" y="328" text-anchor="middle" fill="#ffd7be" font-family="system-ui,sans-serif" font-size="13" font-weight="700">www.nogadanews.com</text>
+  <text x="400" y="330" text-anchor="middle" fill="#ffd7be" font-family="system-ui,sans-serif" font-size="15" font-weight="700">www.nogadanews.com</text>
 </svg>

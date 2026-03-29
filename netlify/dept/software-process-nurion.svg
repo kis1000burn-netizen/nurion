@@ -15,10 +15,10 @@
   </defs>
 
   <rect width="1600" height="1000" fill="url(#bg)"/>
-  <text x="86" y="110" fill="#FFFFFF" font-size="64" font-weight="700" font-family="Pretendard, Arial, sans-serif">구축 진행 흐름</text>
-  <text x="88" y="160" fill="#C5EBE0" font-size="28" font-family="Pretendard, Arial, sans-serif">정의 → 설계 → 개발 → 운영 확장</text>
+  <text x="86" y="118" fill="#FFFFFF" font-size="64" font-weight="700" font-family="Pretendard, Arial, sans-serif">구축 진행 흐름</text>
+  <text x="88" y="208" fill="#C5EBE0" font-size="28" font-family="Pretendard, Arial, sans-serif">정의 → 설계 → 개발 → 운영 확장</text>
 
-  <g transform="translate(80 250)">
+  <g transform="translate(80 308)">
     <rect x="0" y="0" width="300" height="460" rx="30" fill="url(#panel)" stroke="#2DE6A8" stroke-opacity="0.24"/>
     <circle cx="64" cy="70" r="26" fill="url(#green)"/>
     <text x="112" y="82" fill="#FFFFFF" font-size="34" font-weight="700" font-family="Pretendard, Arial, sans-serif">1. 정의</text>
@@ -28,7 +28,7 @@
     <text x="34" y="274" fill="#D5F2EA" font-size="24" font-family="Pretendard, Arial, sans-serif">• 참고 사이트 분석</text>
   </g>
 
-  <g transform="translate(430 250)">
+  <g transform="translate(430 308)">
     <rect x="0" y="0" width="300" height="460" rx="30" fill="url(#panel)" stroke="#2DE6A8" stroke-opacity="0.24"/>
     <circle cx="64" cy="70" r="26" fill="url(#green)"/>
     <text x="112" y="82" fill="#FFFFFF" font-size="34" font-weight="700" font-family="Pretendard, Arial, sans-serif">2. 설계</text>
@@ -38,7 +38,7 @@
     <text x="34" y="274" fill="#D5F2EA" font-size="24" font-family="Pretendard, Arial, sans-serif">• 문서/콘텐츠 구조화</text>
   </g>
 
-  <g transform="translate(780 250)">
+  <g transform="translate(780 308)">
     <rect x="0" y="0" width="300" height="460" rx="30" fill="url(#panel)" stroke="#2DE6A8" stroke-opacity="0.24"/>
     <circle cx="64" cy="70" r="26" fill="url(#green)"/>
     <text x="112" y="82" fill="#FFFFFF" font-size="34" font-weight="700" font-family="Pretendard, Arial, sans-serif">3. 개발</text>
@@ -48,7 +48,7 @@
     <text x="34" y="274" fill="#D5F2EA" font-size="24" font-family="Pretendard, Arial, sans-serif">• 관리자 기능 검수</text>
   </g>
 
-  <g transform="translate(1130 250)">
+  <g transform="translate(1130 308)">
     <rect x="0" y="0" width="300" height="460" rx="30" fill="url(#panel)" stroke="#2DE6A8" stroke-opacity="0.24"/>
     <circle cx="64" cy="70" r="26" fill="url(#green)"/>
     <text x="112" y="82" fill="#FFFFFF" font-size="34" font-weight="700" font-family="Pretendard, Arial, sans-serif">4. 운영</text>
@@ -58,10 +58,10 @@
     <text x="34" y="274" fill="#D5F2EA" font-size="24" font-family="Pretendard, Arial, sans-serif">• 장기 유지관리</text>
   </g>
 
-  <path d="M380 480H430" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
-  <path d="M730 480H780" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
-  <path d="M1080 480H1130" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
-  <polygon points="418,480 390,464 390,496" fill="#49F0B9"/>
-  <polygon points="768,480 740,464 740,496" fill="#49F0B9"/>
-  <polygon points="1118,480 1090,464 1090,496" fill="#49F0B9"/>
+  <path d="M380 538H430" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
+  <path d="M730 538H780" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
+  <path d="M1080 538H1130" stroke="#49F0B9" stroke-width="8" stroke-linecap="round"/>
+  <polygon points="418,538 390,522 390,554" fill="#49F0B9"/>
+  <polygon points="768,538 740,522 740,554" fill="#49F0B9"/>
+  <polygon points="1118,538 1090,522 1090,554" fill="#49F0B9"/>
 </svg>

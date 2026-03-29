@@ -108,6 +108,34 @@ img{max-width:100%; display:block}
   padding: 8px 10px;
   font-size: 12px;
 }
+/* 히어로 SVG 상단 문구와 겹침 방지 */
+.heroMedia--edocs .tag{
+  top: auto;
+  bottom: 12px;
+  left: 12px;
+  max-width: calc(100% - 24px);
+}
+/* 진행 흐름: 단계별 텍스트 간격 + SVG·태그 겹침 방지 */
+.section.section--flow-edocs{
+  margin-top: 28px;
+}
+.section--flow-edocs h2{
+  margin-bottom: 22px;
+}
+.section--flow-edocs .split{
+  gap: 22px;
+  align-items: start;
+}
+.section--flow-edocs .steps{
+  gap: 14px;
+  padding-top: 4px;
+}
+.heroMedia--edocs-flow .tag{
+  top: auto;
+  bottom: 12px;
+  left: 12px;
+  max-width: calc(100% - 24px);
+}
 .dot{
   width:10px; height:10px; border-radius:50%;
   background: var(--accent);
@@ -472,7 +500,7 @@ img{max-width:100%; display:block}
         <p>주식회사 누리온홀딩스의 전자문서·운영문서 체계 서비스는 문서 보관, 검색, 권한관리뿐 아니라 웹문서 작성·관리·유지, PM계약 관련 문서 발안, 태양광협동조합 설립 대행 문서 지원까지 실무형으로 제공합니다.</p>
 
         <div class="heroRow">
-          <div class="heroMedia">
+          <div class="heroMedia heroMedia--edocs">
             <img src="./edocs-hero-nurion_edoc.svg" alt="전자문서 운영문서 체계 히어로 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
             <div class="tag"><span class="dot"></span><span>운영문서 · 계약문서 · 웹문서 체계</span></div>
           </div>
@@ -734,7 +762,7 @@ img{max-width:100%; display:block}
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section--flow-edocs">
       <h2>진행 흐름</h2>
       <div class="split">
         <div class="steps">
@@ -743,7 +771,7 @@ img{max-width:100%; display:block}
           <div class="step"><div class="stepTitle">3. 문안 발안</div><div class="stepDesc">실제 필요한 계약, 협의, 웹 운영, 협동조합 설립 문서를 초안화합니다.</div></div>
           <div class="step"><div class="stepTitle">4. 운영 정착</div><div class="stepDesc">문서 보관, 수정, 활용, 권한 기준까지 운영 가능한 상태로 정리합니다.</div></div>
         </div>
-        <div class="heroMedia" style="aspect-ratio: 16/12;">
+        <div class="heroMedia heroMedia--edocs-flow" style="aspect-ratio: 16/12;">
           <img src="./edocs-process-nurion_edoc.svg" alt="전자문서 운영 프로세스 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
           <div class="tag"><span class="dot"></span><span>진단 → 설계 → 문안 발안 → 운영 정착</span></div>
         </div>
@@ -798,7 +826,6 @@ img{max-width:100%; display:block}
             <li>상호명: 주식회사 누리온홀딩스</li>
             <li>대표이사: 최인석</li>
             <li>사업자등록번호: 702-86-03510</li>
-            <li>운영 파트너: 에테르니언</li>
             <li>연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a></li>
             <li>이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></li>
             <li>주소: 세종특별자치시 집현중앙7로 6</li>

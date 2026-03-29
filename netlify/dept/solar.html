@@ -108,6 +108,27 @@
     padding: 8px 10px;
     font-size: 12px;
   }
+  /* 진행 흐름: SVG 제목과 배지 겹침 방지 */
+  .section.section--flow-solar{
+    margin-top: 28px;
+  }
+  .section--flow-solar h2{
+    margin-bottom: 22px;
+  }
+  .section--flow-solar .split{
+    gap: 22px;
+    align-items: start;
+  }
+  .section--flow-solar .steps{
+    gap: 14px;
+    padding-top: 4px;
+  }
+  .heroMedia--solar-flow .tag{
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
   .dot{
     width:10px; height:10px; border-radius:50%;
     background: var(--accent);
@@ -214,6 +235,38 @@
     padding: 12px 14px;
     background: rgba(0,0,0,.18);
     opacity:.92;
+  }
+  /* 사업 문의 — 연락 정보 카드: 제목·본문 간격, 하단 안내 분리 */
+  #contact .card--contact-info{
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  #contact .card--contact-info h3{
+    margin-bottom: 16px;
+  }
+  #contact .card--contact-info > p{
+    margin: 0 0 16px;
+    line-height: 1.65;
+  }
+  /* 상호명~주소: 윗글·아랫글 사이 세로 중앙 */
+  #contact .card--contact-info .contactInfoCore{
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding: 12px 0 20px;
+  }
+  #contact .card--contact-info .contactInfoCore ul{
+    margin: 0;
+    padding-left: 18px;
+    line-height: 1.7;
+  }
+  #contact .card--contact-info .note--contact-foot{
+    flex-shrink: 0;
+    margin-top: 0;
+    margin-bottom: 0;
   }
   .footer{
     margin-top: 14px;
@@ -695,7 +748,7 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section--flow-solar">
       <h2>진행 흐름</h2>
       <div class="split">
         <div class="steps">
@@ -704,7 +757,7 @@
           <div class="step"><div class="stepTitle">3. 문서 정리</div><div class="stepDesc">협동조합·PM·설명자료·협의 문서를 실무형으로 정리합니다.</div></div>
           <div class="step"><div class="stepTitle">4. 실행 지원</div><div class="stepDesc">후속 대관, 협의, 운영 정착을 위한 보완 방향까지 연결합니다.</div></div>
         </div>
-        <div class="heroMedia" style="aspect-ratio: 16/12;">
+        <div class="heroMedia heroMedia--solar-flow" style="aspect-ratio: 16/12;">
           <img src="./solar-process-nurion.svg" alt="태양광사업 프로세스 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
           <div class="tag"><span class="dot"></span><span>진단 → 구조 설계 → 문서 정리 → 실행 지원</span></div>
         </div>
@@ -752,19 +805,20 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card card--contact-info">
           <h3>연락 정보</h3>
           <p>상세 범위는 사업 형태와 지역, 추진 주체에 따라 달라질 수 있으므로 사전 상담 후 정리해드립니다.</p>
-          <ul>
-            <li>상호명: 주식회사 누리온홀딩스</li>
-            <li>대표이사: 최인석</li>
-            <li>사업자등록번호: 702-86-03510</li>
-            <li>운영 파트너: 에테르니언</li>
-            <li>연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a></li>
-            <li>이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></li>
-            <li>주소: 세종특별자치시 집현중앙7로 6</li>
-          </ul>
-          <div class="note" style="margin-top:12px">
+          <div class="contactInfoCore">
+            <ul>
+              <li>상호명: 주식회사 누리온홀딩스</li>
+              <li>대표이사: 최인석</li>
+              <li>사업자등록번호: 702-86-03510</li>
+              <li>연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a></li>
+              <li>이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></li>
+              <li>주소: 세종특별자치시 집현중앙7로 6</li>
+            </ul>
+          </div>
+          <div class="note note--contact-foot">
             <span class="dot"></span>
             <span class="small">실제 시공 기업 소개서의 방향을 반영하되, 누리온홀딩스 페이지에서는 사업 구조·문서·협동조합 설립 지원까지 함께 보이도록 확장했습니다.</span>
           </div>

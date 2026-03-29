@@ -272,6 +272,27 @@
   .docTable tr:last-child td{
     border-bottom:none;
   }
+  /* 진행 흐름: 제목·본문·이미지 태그 겹침 방지 */
+  .section.section--flow{
+    margin-top: 28px;
+  }
+  .section--flow h2{
+    margin-bottom: 22px;
+  }
+  .section--flow .split{
+    gap: 22px;
+    align-items: start;
+  }
+  .section--flow .steps{
+    gap: 14px;
+    padding-top: 4px;
+  }
+  .heroMedia--process .tag{
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+  }
   .exampleGrid{
     display:grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -549,16 +570,16 @@
       </table>
     </section>
 
-    <section class="section">
+    <section class="section section--flow">
       <h2>진행 흐름</h2>
       <div class="split">
         <div class="steps">
           <div class="step"><div class="stepTitle">1. 정의</div><div class="stepDesc">사업 목적, 요구사항, 우선순위, 운영 방향을 정리합니다.</div></div>
           <div class="step"><div class="stepTitle">2. 설계</div><div class="stepDesc">화면 구조, 기능 흐름, 관리자 운영 방식, 확장 범위를 설계합니다.</div></div>
           <div class="step"><div class="stepTitle">3. 구축</div><div class="stepDesc">홈페이지, 시스템, 플랫폼, 부가 기능을 단계적으로 개발합니다.</div></div>
-          <div class="step"><div class="stepTitle">4. 운영 확장</div><div class="stepDesc">배포 후 유지관리, 기능 보강, 운영 리포트, 후속 확장까지 이어갑니다.</div></div>
+          <div class="step"><div class="stepTitle">4. 운영 확장</div><div class="stepDesc">배포 후 유지관리, 기능 보강, 운영 리포트, 후속 확장까지 이어갩니다.</div></div>
         </div>
-        <div class="heroMedia" style="aspect-ratio: 16/12;">
+        <div class="heroMedia heroMedia--process" style="aspect-ratio: 16/12;">
           <img src="./software-process-nurion.svg" alt="누리온홀딩스 구축 프로세스 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
           <div class="tag"><span class="dot"></span><span>정의 → 설계 → 구축 → 운영 확장</span></div>
         </div>
@@ -602,7 +623,6 @@
             <li>상호명: 주식회사 누리온홀딩스</li>
             <li>대표이사: 최인석</li>
             <li>사업자등록번호: 702-86-03510</li>
-            <li>운영 파트너: 에테르니언</li>
             <li>연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a></li>
             <li>이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></li>
             <li>주소: 세종특별자치시 집현중앙7로 6</li>
