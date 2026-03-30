@@ -25373,7 +25373,7 @@ Object.keys(DEPT_CONTENT).forEach(renderDeptPage);
 function openDeskModalByDept({ deptKey, label }) {
   const d = DEPT_CONTENT[deptKey];
   if (!d) return;
-  dmKicker && (dmKicker.textContent = d.kicker || "NURION");
+  dmKicker && (dmKicker.textContent = d.kicker || "(주)누리온홀딩스");
   dmTitle && (dmTitle.textContent = d.title || label || "\uC0AC\uC5C5\uBD80");
   dmSub && (dmSub.textContent = d.sub || "");
   dmBody && (dmBody.innerHTML = d.blocks.map((b) => `

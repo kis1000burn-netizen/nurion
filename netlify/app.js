@@ -1,5 +1,5 @@
 /**
- * NURION 3D 로비
+ * (주)누리온홀딩스 3D 로비
  * - 인트로 후 LOBBY_MODEL_PATH(GLB) 로드. 기본 minimal(원본만). full=데스크 행성 등(이름이 예전 로비와 맞을 때만).
  * - 브라우저가 읽는 건 netlify/bundle.js 뿐(esbuild). 이 파일만 고치면 반영 안 됨 → npm run build:netlify 또는 watch:netlify
  */
@@ -694,7 +694,7 @@ function openDeskModalByDept({ deptKey, label }){
   const d = DEPT_CONTENT[deptKey];
   if (!d) return;
 
-  dmKicker && (dmKicker.textContent = d.kicker || 'NURION');
+  dmKicker && (dmKicker.textContent = d.kicker || '(주)누리온홀딩스');
   dmTitle && (dmTitle.textContent = d.title || label || '사업부');
   dmSub && (dmSub.textContent = d.sub || '');
 
