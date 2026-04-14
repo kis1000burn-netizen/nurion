@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>인터넷신문사 | NURION</title>
-  <meta name="description" content="주식회사 누리온홀딩스의 인터넷신문사 부문. 노가다뉴스를 중심으로 기사 발행, 보도자료 접수, 광고상품, 기사형 홍보, 제휴 콘텐츠를 운영합니다." />
+  <meta name="description" content="주식회사 누리온홀딩스의 인터넷신문사 부문. 노가다뉴스와 디지털시민뉴스(DCF News)를 중심으로 기사 발행, 보도자료 접수, 광고상품, 기사형 홍보, 제휴 콘텐츠를 운영합니다." />
   <meta property="og:title" content="인터넷신문사 | NURION" />
-  <meta property="og:description" content="노가다뉴스 중심 기사 발행, 광고 운영, 제휴형 콘텐츠를 전개하는 인터넷신문사 부문" />
+  <meta property="og:description" content="노가다뉴스와 DCF News(디지털시민뉴스) 중심 기사 발행, 광고 운영, 제휴형 콘텐츠를 전개하는 인터넷신문사 부문" />
   <meta property="og:type" content="website" />
   <style>
 :root{
@@ -107,6 +107,44 @@ img{max-width:100%; display:block}
   border-radius: 999px;
   padding: 8px 10px;
   font-size: 12px;
+}
+.heroMediaRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+  width:100%;
+}
+@media (max-width: 640px){
+  .heroMediaRow{ grid-template-columns: 1fr; }
+}
+.heroMedia--dcf{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(135deg, rgba(140,191,255,.14), rgba(103,214,200,.1));
+}
+.heroMedia--dcf .dcfHeroMark{
+  text-align:center;
+  font-weight:900;
+  font-size:clamp(16px, 2.2vw, 22px);
+  letter-spacing:.04em;
+  line-height:1.35;
+  color:#f0f4ff;
+}
+.heroMedia--dcf .dcfHeroMark small{
+  display:block;
+  margin-top:8px;
+  font-size:12px;
+  font-weight:700;
+  opacity:.88;
+}
+.mediaOutletGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+@media (max-width: 760px){
+  .mediaOutletGrid{ grid-template-columns: 1fr; }
 }
 .dot{
   width:10px; height:10px; border-radius:50%;
@@ -518,25 +556,32 @@ a.siteLink:hover{
 
     <div class="grid">
       <section class="hero">
-        <div class="pill"><span class="dot"></span><span class="small">노가다뉴스 중심 기사 발행 · 광고 운영 · 제휴 콘텐츠</span></div>
-        <h1>현장 이슈를 기사로 만들고,<br>광고와 제휴까지 연결하는 운영형 미디어입니다.</h1>
-        <p>주식회사 누리온홀딩스의 인터넷신문사 부문은 노가다뉴스를 중심으로 건설·현장·입찰·산업 이슈를 다루며, 기사 발행부터 보도자료 접수, 광고상품 운영, 제휴형 콘텐츠까지 함께 전개합니다.</p>
+        <div class="pill"><span class="dot"></span><span class="small">노가다뉴스 · DCF News(디지털시민뉴스) — 기사 발행 · 광고 · 제휴</span></div>
+        <h1>현장 이슈부터 공론형 미디어까지,<br>광고와 제휴까지 연결하는 운영형 매체입니다.</h1>
+        <p>주식회사 누리온홀딩스의 인터넷신문사 부문은 <strong>노가다뉴스</strong>와 <strong>디지털시민뉴스(DCF News)</strong>를 함께 운영합니다. 건설·현장·입찰·산업 이슈부터 시민 공론·정책 검증형 콘텐츠까지, 기사 발행·보도자료 접수·광고·제휴를 전개합니다.</p>
 
         <div class="heroRow">
-          <div class="heroMedia">
-            <img src="./news-hero-nogadanews.svg" alt="노가다뉴스 히어로 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
-            <div class="tag"><span class="dot"></span><span>노가다뉴스 운영형 미디어 비주얼</span></div>
+          <div class="heroMediaRow">
+            <div class="heroMedia">
+              <img src="./news-hero-nogadanews.svg" alt="노가다뉴스 히어로 이미지" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25))';" />
+              <div class="tag"><span class="dot"></span><span>노가다뉴스 — 현장·산업형</span></div>
+            </div>
+            <div class="heroMedia heroMedia--dcf">
+              <div class="dcfHeroMark">DCF News<small>디지털시민뉴스 · 공론형 미디어</small></div>
+              <div class="tag"><span class="dot"></span><span>디지털시민포럼 계열</span></div>
+            </div>
           </div>
 
           <div class="note">
             <span class="dot"></span>
-            <span class="small"><a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a>을 중심으로 기사 발행, 광고 운영, 제휴형 콘텐츠를 함께 전개합니다. 배너 광고부터 기사형 광고, 장기 제휴형 캠페인까지 목적에 맞는 맞춤 구성이 가능합니다.</span>
+            <span class="small"><a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a> — 현장·산업 이슈 중심. <a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">www.dcfnews.com</a> — 디지털시민뉴스·공론·정책 검증형 콘텐츠. 배너·기사형·제휴형까지 목적에 맞게 안내합니다.</span>
           </div>
 
           <div class="ctaBar">
             <a class="btn primary" href="#contact">보도자료 · 광고 · 제휴 문의</a>
             <a class="btn" href="#advertising">광고상품 보기</a>
             <a class="btn" href="https://www.nogadanews.com" target="_blank" rel="noopener noreferrer">노가다뉴스 방문</a>
+            <a class="btn" href="https://www.dcfnews.com/" target="_blank" rel="noopener noreferrer">DCF News 방문</a>
           </div>
         </div>
       </section>
@@ -551,9 +596,14 @@ a.siteLink:hover{
         </div>
         <div class="infoList">
           <div class="infoItem">
-            <strong>현재 운영 매체</strong>
-            노가다뉴스는 건설·현장·입찰·산업 이슈를 중심으로 운영되는 실무형 인터넷신문 매체입니다.
+            <strong>현재 운영 매체 — 노가다뉴스</strong>
+            건설·현장·입찰·산업 이슈를 중심으로 운영되는 실무형 인터넷신문 매체입니다.
             <div class="site"><a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a></div>
+          </div>
+          <div class="infoItem">
+            <strong>현재 운영 매체 — DCF News</strong>
+            디지털시민뉴스 명의로 시민 공론·정책·지역 이슈 등을 다루는 공론형 인터넷신문 사이트입니다.
+            <div class="site"><a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">www.dcfnews.com</a></div>
           </div>
           <div class="infoItem">
             <strong>문의 가능 범위</strong>
@@ -565,14 +615,23 @@ a.siteLink:hover{
 
     <section class="section">
       <h2>운영 · 발행 매체</h2>
-      <div class="portalCard">
-        <div class="pill"><span class="dot"></span><span class="small">현재 운영 중인 인터넷신문사</span></div>
-        <h3 style="margin:12px 0 8px; font-size:22px;">노가다뉴스를 중심으로 현장형 기사, 제휴형 콘텐츠, 광고 상품을 운영합니다.</h3>
-        <p class="sectionLead" style="margin-bottom:10px;">
-          누리온의 인터넷신문사 부문은 건설·현장·입찰·노무·산업 이슈에 특화된 운영형 매체로서,
-          실제 기사 발행과 콘텐츠 확산, 광고·제휴 연계를 함께 설계합니다.
-        </p>
-        <div class="site"><a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a></div>
+      <div class="mediaOutletGrid">
+        <div class="portalCard">
+          <div class="pill"><span class="dot"></span><span class="small">현장·산업 특화</span></div>
+          <h3 style="margin:12px 0 8px; font-size:20px;">노가다뉴스</h3>
+          <p class="sectionLead" style="margin-bottom:10px;">
+            건설·현장·입찰·노무·산업 이슈에 특화된 운영형 매체로, 기사 발행·확산과 광고·제휴를 함께 설계합니다.
+          </p>
+          <div class="site"><a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a></div>
+        </div>
+        <div class="portalCard">
+          <div class="pill"><span class="dot"></span><span class="small">공론·정책형 미디어</span></div>
+          <h3 style="margin:12px 0 8px; font-size:20px;">DCF News</h3>
+          <p class="sectionLead" style="margin-bottom:10px;">
+            디지털시민뉴스 명의로 시민 공론·정책 검증·지역·청년 등 이슈를 다루며, 참여 민주·공적 담론을 지향합니다.
+          </p>
+          <div class="site"><a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">www.dcfnews.com</a></div>
+        </div>
       </div>
     </section>
 
@@ -662,7 +721,7 @@ a.siteLink:hover{
       <div class="highlight">
         <div class="panel">
           <h3>실매체를 먼저 보이게 합니다.</h3>
-          <p>부서명보다 <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">노가다뉴스</a>가 실제로 발행·광고·제휴까지 이어지는 매체라는 점이 바로 드러나야 광고주와 보도 담당자 모두 신뢰할 수 있습니다.</p>
+          <p>부서명보다 <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">노가다뉴스</a>와 <a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">DCF News(디지털시민뉴스)</a>가 실제로 발행·광고·제휴까지 이어지는 매체라는 점이 바로 드러나야 광고주와 보도 담당자 모두 신뢰할 수 있습니다.</p>
         </div>
         <div class="panel">
           <h3>현장성과 수익 구조를 같이 말합니다.</h3>
@@ -800,7 +859,7 @@ a.siteLink:hover{
         <div class="steps">
           <div class="step"><div class="stepTitle">1. 기획</div><div class="stepDesc">섹션·톤앤매너·캘린더·광고 운영 방향을 설계합니다.</div></div>
           <div class="step"><div class="stepTitle">2. 제작</div><div class="stepDesc">취재·인터뷰 → 원고·편집 → 검수까지 기사 또는 광고 콘텐츠를 제작합니다.</div></div>
-          <div class="step"><div class="stepTitle">3. 발행·확산</div><div class="stepDesc">노가다뉴스 발행을 중심으로 검색·공유·확산 구조를 운영합니다.</div></div>
+          <div class="step"><div class="stepTitle">3. 발행·확산</div><div class="stepDesc">노가다뉴스·DCF News 등 운영 매체 발행을 중심으로 검색·공유·확산 구조를 운영합니다.</div></div>
           <div class="step"><div class="stepTitle">4. 광고·제휴</div><div class="stepDesc">배너, 기사형 광고, 제휴 패키지를 통해 실제 수익 연결 구조를 설계합니다.</div></div>
         </div>
         <div class="heroMedia" style="aspect-ratio: 16/12;">
@@ -853,10 +912,10 @@ a.siteLink:hover{
 
         <div class="card">
           <h3>연락 정보</h3>
-          <p>노가다뉴스를 중심으로 보도자료, 기사형 홍보, 광고, 제휴 문의를 받고 있습니다.</p>
+          <p>노가다뉴스와 DCF News(디지털시민뉴스)를 중심으로 보도자료, 기사형 홍보, 광고, 제휴 문의를 받고 있습니다.</p>
           <ul>
-            <li>운영 매체: 노가다뉴스</li>
-            <li>사이트: <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a></li>
+            <li>운영 매체: 노가다뉴스, DCF News(디지털시민뉴스)</li>
+            <li>사이트: <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a>, <a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">www.dcfnews.com</a></li>
             <li>상호명: 주식회사 누리온홀딩스</li>
             <li>대표이사: 최인석</li>
             <li>사업자등록번호: 702-86-03510</li>
@@ -874,7 +933,7 @@ a.siteLink:hover{
 
     <footer class="footer" style="align-items:flex-start; flex-direction:column;">
       <span class="pill"><span class="dot"></span><span class="small">인터넷신문사 · NURION MEDIA</span></span>
-      <span class="small">운영 매체: 노가다뉴스 · <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a></span>
+      <span class="small">운영 매체: 노가다뉴스 · <a href="https://www.nogadanews.com" class="siteLink" target="_blank" rel="noopener noreferrer">www.nogadanews.com</a> · DCF News · <a href="https://www.dcfnews.com/" class="siteLink" target="_blank" rel="noopener noreferrer">www.dcfnews.com</a></span>
       <span class="small">상호명: 주식회사 누리온홀딩스</span>
       <span class="small">대표이사: 최인석 · 사업자등록번호: 702-86-03510</span>
       <span class="small">연락처: <a href="tel:01059455925" class="contact-link">010-5945-5925</a> · 이메일: <a href="mailto:aibrew@naver.com" class="contact-link">aibrew@naver.com</a></span>
