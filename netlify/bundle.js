@@ -24778,7 +24778,7 @@ function DRACOWorker() {
 }
 
 // netlify/app.js
-var LOBBY_BUILD_STAMP = "20260410c";
+var LOBBY_BUILD_STAMP = "20260411a";
 try {
   window.__LOBBY_BUILD_STAMP = LOBBY_BUILD_STAMP;
 } catch (_) {
@@ -26515,6 +26515,28 @@ function initThree() {
   scene.add(dir);
   scene.add(new HemisphereLight(8429823, 2105408, 0.4));
   renderer.domElement.addEventListener("click", onCanvasClick);
+  renderer.domElement.addEventListener(
+    "pointermove",
+    (e) => {
+      deskHoverLastX = e.clientX;
+      deskHoverLastY = e.clientY;
+      if (deskHoverRaf) return;
+      deskHoverRaf = requestAnimationFrame(() => {
+        deskHoverRaf = 0;
+        updateDeskDeptHoverTooltip(deskHoverLastX, deskHoverLastY);
+      });
+    },
+    { passive: true }
+  );
+  renderer.domElement.addEventListener(
+    "pointerleave",
+    () => {
+      const tel = document.getElementById("desk-tooltip");
+      if (tel) tel.style.display = "none";
+      setDeptHoverCursor(false);
+    },
+    { passive: true }
+  );
   renderer.domElement.addEventListener("touchstart", onCanvasTouch, { passive: false });
   deptPanel = document.getElementById("dept-panel");
   deptTitleEl = document.getElementById("dept-title");
@@ -26999,6 +27021,94 @@ function findDeskFromObject(obj) {
     cur = cur.parent;
   }
   return null;
+}
+function resolveHoveredDeptLabelFromHits(hits) {
+  if (!hits || hits.length === 0) return null;
+  let deskMesh = null;
+  for (const h of hits) {
+    const slot = findPlanetClickSlotFromObject(h.object);
+    if (slot) {
+      const i = slot - 1;
+      return DESK_LABELS[i]?.label || null;
+    }
+    const slotPlane = findDeskSlotFromPlaneMesh(h.object);
+    if (slotPlane) {
+      const i = slotPlane - 1;
+      return DESK_LABELS[i]?.label || null;
+    }
+    const d = findDeskFromObject(h.object);
+    if (d) {
+      deskMesh = d;
+      break;
+    }
+  }
+  if (deskMesh) {
+    const label = deskMesh.userData && deskMesh.userData.label;
+    if (label) return label;
+    const deskId = deskMesh.userData.deskId || deskMesh.userData.deskName || normalizePlaneName(deskMesh.name) || deskMesh.name;
+    const nk = normalizePlaneName(String(deskId));
+    const idx = DESK_LABELS.findIndex((d) => normalizePlaneName(d.name) === nk);
+    if (idx >= 0) return DESK_LABELS[idx].label;
+  }
+  return null;
+}
+var deskHoverRaf = 0;
+var deskHoverLastX = 0;
+var deskHoverLastY = 0;
+function updateDeskDeptHoverTooltip(clientX, clientY) {
+  const el = document.getElementById("desk-tooltip");
+  const introEl = document.getElementById("intro-container");
+  if (!renderer || !camera || !lobbyModel || !el) return;
+  if (introEl && !introEl.classList.contains("hidden")) {
+    el.style.display = "none";
+    setDeptHoverCursor(false);
+    return;
+  }
+  if (useMobileLobbyPath()) {
+    el.style.display = "none";
+    setDeptHoverCursor(false);
+    return;
+  }
+  try {
+    if (deptRoot && deptRoot.classList.contains("open")) {
+      el.style.display = "none";
+      setDeptHoverCursor(false);
+      return;
+    }
+    if (deskModal && deskModal.classList.contains("open")) {
+      el.style.display = "none";
+      setDeptHoverCursor(false);
+      return;
+    }
+  } catch (_) {
+  }
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = (clientX - rect.left) / rect.width * 2 - 1;
+  mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = [];
+  lobbyModel.traverse((c) => {
+    if (c.isMesh) meshes.push(c);
+  });
+  const hits = raycaster.intersectObjects(meshes, true);
+  const label = resolveHoveredDeptLabelFromHits(hits);
+  if (label) {
+    el.textContent = label;
+    el.style.display = "block";
+    el.style.left = `${clientX}px`;
+    el.style.top = `${clientY}px`;
+    setDeptHoverCursor(true);
+  } else {
+    el.style.display = "none";
+    setDeptHoverCursor(false);
+  }
+}
+function setDeptHoverCursor(pointer) {
+  try {
+    if (!renderer || !renderer.domElement) return;
+    renderer.domElement.style.cursor = pointer ? "pointer" : "";
+  } catch (_) {
+  }
 }
 function onCanvasClick(event) {
   if (!controls || !camera) return;
